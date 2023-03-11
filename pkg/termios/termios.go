@@ -65,6 +65,7 @@ func EnableRawMode(fd uintptr) unix.Termios {
 func GetWindowSize(fd int) (width, height int, err error) {
 	ws, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
 	if err != nil {
+		// TODO impl fallback strategy
 		return -1, -1, err
 	}
 	return int(ws.Col), int(ws.Row), nil

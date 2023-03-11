@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/giulianopz/newscanoe/pkg/editor"
+	"github.com/giulianopz/newscanoe/pkg/display"
 	"github.com/giulianopz/newscanoe/pkg/termios"
 )
 
@@ -17,18 +17,22 @@ func main() {
 	origTermios := termios.EnableRawMode(in)
 	defer termios.DisableRawMode(in, origTermios)
 
-	e := editor.New()
-	//e.SetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find")
-	e.RefreshScreen()
-	err := e.GetURLs()
+	d := display.New()
+	d.SetStatusMessage("HELP: Ctrl-Q = quit")
+	d.RefreshScreen()
+
+	d.SetWindowSize(in)
+
+	err := d.GetURLs()
 	if err != nil {
 		fmt.Fprintf(os.Stdout, err.Error())
 	}
+	d.Draw()
 
 	quit := make(chan bool, 0)
 
 	go func() {
-		e.ProcessKeyStrokes(in, quit)
+		d.ProcessKeyStrokes(in, quit)
 	}()
 
 	<-quit
