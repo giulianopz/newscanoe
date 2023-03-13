@@ -53,11 +53,20 @@ type Display struct {
 	next           string
 }
 
-func New() *Display {
-	return &Display{
+func New(in uintptr) *Display {
+	d := &Display{
 		cx: 1,
 		cy: 1,
 	}
+
+	if err := d.LoadURLs(); err != nil {
+		log.Fatal(err)
+	}
+
+	d.SetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-r = reload | Ctrl-R = reload all")
+	d.SetWindowSize(in)
+
+	return d
 }
 
 func ctrlPlus(k byte) byte {
@@ -159,23 +168,19 @@ func readKeyStroke(fd uintptr) byte {
 
 func (d *Display) ProcessKeyStroke(fd uintptr, quit chan bool) {
 
-	for {
+	input := readKeyStroke(fd)
 
-		input := readKeyStroke(fd)
-
-		switch input {
-		case ctrlPlus('q'), 'q':
-			{
-				fmt.Fprint(os.Stdout, "\x1b[2J")
-				fmt.Fprint(os.Stdout, "\x1b[H")
-				quit <- true
-			}
-		case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
-			d.MoveCursor(input)
-		default:
-			//fmt.Fprintf(os.Stdout, "keystroke: %v\r\n", input)
+	switch input {
+	case ctrlPlus('q'), 'q':
+		{
+			fmt.Fprint(os.Stdout, "\x1b[2J")
+			fmt.Fprint(os.Stdout, "\x1b[H")
+			quit <- true
 		}
-		fmt.Fprintf(os.Stdout, "\x1b[%d;%dH", d.cy, d.cx)
+	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
+		d.MoveCursor(input)
+	default:
+		//fmt.Fprintf(os.Stdout, "keystroke: %v\r\n", input)
 	}
 }
 
@@ -183,14 +188,20 @@ func (d *Display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
+	buf.WriteString("\x1b[2J")
+
 	// hide cursor
 	buf.WriteString("\x1b[?25l")
+	buf.WriteString("\x1b[H")
+
+	d.Draw(buf)
+
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
 	// show cursor
 	buf.WriteString("\x1b[?25h")
 	// erase everything after cursor
-	buf.WriteString("\x1b[0J")
+	//buf.WriteString("\x1b[0J")
 
 	fmt.Fprint(os.Stdout, buf)
 }
@@ -209,7 +220,7 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 	return nil
 }
 
-func (d *Display) GetURLs() error {
+func (d *Display) LoadURLs() error {
 
 	home := os.Getenv("HOME")
 
@@ -231,9 +242,7 @@ func (d *Display) GetURLs() error {
 	return nil
 }
 
-func (d *Display) Draw() {
-
-	buf := &bytes.Buffer{}
+func (d *Display) Draw(buf *bytes.Buffer) {
 
 	var printed int
 	for i := 0; i < len(d.rows); i++ {
@@ -257,11 +266,4 @@ func (d *Display) Draw() {
 	buf.WriteString("\r\n")
 
 	buf.WriteString(fmt.Sprintf("%s\r\n", d.msgtatus))
-
-	// move cursor to (y,x)
-	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
-	// show cursor
-	buf.WriteString("\x1b[?25h")
-
-	fmt.Fprint(os.Stdout, buf)
 }
