@@ -188,6 +188,7 @@ func (d *Display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
+	// erase entire screen
 	buf.WriteString("\x1b[2J")
 
 	// hide cursor
@@ -200,8 +201,6 @@ func (d *Display) RefreshScreen() {
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
 	// show cursor
 	buf.WriteString("\x1b[?25h")
-	// erase everything after cursor
-	//buf.WriteString("\x1b[0J")
 
 	fmt.Fprint(os.Stdout, buf)
 }
