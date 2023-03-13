@@ -18,13 +18,11 @@ func main() {
 	defer termios.DisableRawMode(in, origTermios)
 
 	d := display.New()
-	d.SetStatusMessage("HELP: Ctrl-Q = quit")
+	d.SetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-r = reload | Ctrl-R = reload all")
 	d.RefreshScreen()
-
 	d.SetWindowSize(in)
 
-	err := d.GetURLs()
-	if err != nil {
+	if err := d.GetURLs(); err != nil {
 		fmt.Fprintf(os.Stdout, err.Error())
 	}
 	d.Draw()
@@ -32,7 +30,7 @@ func main() {
 	quit := make(chan bool, 0)
 
 	go func() {
-		d.ProcessKeyStrokes(in, quit)
+		d.ProcessKeyStroke(in, quit)
 	}()
 
 	<-quit
