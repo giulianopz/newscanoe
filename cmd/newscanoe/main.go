@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/signal"
 	"syscall"
 
 	"github.com/giulianopz/newscanoe/pkg/display"
@@ -18,6 +19,17 @@ func main() {
 	defer termios.DisableRawMode(in, origTermios)
 
 	d := display.New(in)
+
+	sigC := make(chan os.Signal, 1)
+	signal.Notify(sigC, syscall.SIGWINCH)
+
+	go func() {
+		for {
+			<-sigC
+			d.SetWindowSize(in)
+			d.RefreshScreen()
+		}
+	}()
 
 	quit := make(chan bool, 0)
 
