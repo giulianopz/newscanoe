@@ -275,5 +275,6 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	buf.WriteString(fmt.Sprintf("%s (y:%v, x:%v) <---> (h:%v, w:%v)\r\n", d.msgtatus, d.cy, d.cx, d.height, d.width))
+	tracking := fmt.Sprintf("(y:%v,x:%v)(h:%v,w:%v)", d.cy, d.cx, d.height, d.width)
+	buf.WriteString(fmt.Sprintf("%s %135s\r\n", d.msgtatus, tracking))
 }
