@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"syscall"
 
 	"github.com/giulianopz/newscanoe/pkg/display"
 	"github.com/giulianopz/newscanoe/pkg/termios"
@@ -29,3 +30,9 @@ func main() {
 
 	<-quit
 }
+
+var (
+	terminationSignals = []os.Signal{
+		syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT,
+	}
+)

@@ -87,6 +87,9 @@ func (d *Display) MoveCursor(dir byte) {
 	case ARROW_RIGHT:
 		if (d.cx - 1) < (len(d.rendered[d.cy-1]) - 1) {
 			d.cx++
+		} else if d.cy >= 1 && d.cy < (d.height-bottomPadding) {
+			d.cy++
+			d.cx = 0
 		}
 	case ARROW_DOWN:
 		if d.cy < (d.height - bottomPadding) {
