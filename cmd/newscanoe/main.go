@@ -11,6 +11,13 @@ import (
 
 var (
 	in = os.Stdin.Fd()
+
+	quitC = make(chan bool, 0)
+	sigC  = make(chan os.Signal, 1)
+
+	signals = []os.Signal{
+		syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGWINCH,
+	}
 )
 
 func main() {
@@ -20,31 +27,26 @@ func main() {
 
 	d := display.New(in)
 
-	sigC := make(chan os.Signal, 1)
-	signal.Notify(sigC, syscall.SIGWINCH)
+	signal.Notify(sigC, signals...)
 
 	go func() {
 		for {
-			<-sigC
-			d.SetWindowSize(in)
-			d.RefreshScreen()
+			s := <-sigC
+			if s == syscall.SIGWINCH {
+				d.SetWindowSize(in)
+				d.RefreshScreen()
+			} else {
+				d.Quit(quitC)
+			}
 		}
 	}()
-
-	quit := make(chan bool, 0)
 
 	go func() {
 		for {
 			d.RefreshScreen()
-			d.ProcessKeyStroke(in, quit)
+			d.ProcessKeyStroke(in, quitC)
 		}
 	}()
 
-	<-quit
+	<-quitC
 }
-
-var (
-	terminationSignals = []os.Signal{
-		syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT,
-	}
-)

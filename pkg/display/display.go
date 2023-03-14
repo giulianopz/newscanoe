@@ -180,17 +180,19 @@ func readKeyStroke(fd uintptr) byte {
 	}
 }
 
-func (d *Display) ProcessKeyStroke(fd uintptr, quit chan bool) {
+func (d *Display) Quit(quitC chan bool) {
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+	fmt.Fprint(os.Stdout, "\x1b[H")
+	quitC <- true
+}
+
+func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	input := readKeyStroke(fd)
 
 	switch input {
 	case ctrlPlus('q'), 'q':
-		{
-			fmt.Fprint(os.Stdout, "\x1b[2J")
-			fmt.Fprint(os.Stdout, "\x1b[H")
-			quit <- true
-		}
+		d.Quit(quitC)
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
 	default:
