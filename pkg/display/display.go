@@ -13,6 +13,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+var bottomPadding int = 3
+
 const (
 	BACKSPACE  = 127
 	ARROW_LEFT = iota
@@ -43,7 +45,7 @@ type Display struct {
 
 	origTermios unix.Termios
 
-	rows     []string
+	rows     [][]byte
 	rendered [][]byte
 
 	pages          int
@@ -76,13 +78,24 @@ func ctrlPlus(k byte) byte {
 func (d *Display) MoveCursor(dir byte) {
 	switch dir {
 	case ARROW_LEFT:
-		d.cx--
+		if d.cx != 1 {
+			d.cx--
+		} else if d.cy > 1 {
+			d.cy--
+			d.cx = len(d.rendered[d.cy-1])
+		}
 	case ARROW_RIGHT:
-		d.cx++
+		if (d.cx - 1) < (len(d.rendered[d.cy-1]) - 1) {
+			d.cx++
+		}
 	case ARROW_DOWN:
-		d.cy++
+		if d.cy < (d.height - bottomPadding) {
+			d.cy++
+		}
 	case ARROW_UP:
-		d.cy--
+		if d.cy != 1 {
+			d.cy--
+		}
 	}
 }
 
@@ -132,8 +145,6 @@ func readKeyStroke(fd uintptr) byte {
 						}
 					}
 				} else {
-
-					//fmt.Fprintf(os.Stdout, "debug: seq=%v\r\n", seq)
 
 					switch seq[1] {
 					case 'A':
@@ -226,7 +237,7 @@ func (d *Display) LoadURLs() error {
 	file, _ := os.Open(home + "/.newsboat/urls")
 	defer file.Close()
 
-	d.rows = make([]string, 0)
+	d.rows = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 
 	fscanner := bufio.NewScanner(file)
@@ -234,7 +245,7 @@ func (d *Display) LoadURLs() error {
 
 		url := fscanner.Bytes()
 		if !strings.Contains(string(url), "#") {
-			d.rows = append(d.rows, string(url))
+			d.rows = append(d.rows, url)
 			d.rendered = append(d.rendered, url)
 		}
 	}
@@ -244,19 +255,19 @@ func (d *Display) LoadURLs() error {
 func (d *Display) Draw(buf *bytes.Buffer) {
 
 	var printed int
-	for i := 0; i < len(d.rows); i++ {
-		if i < d.height-3 {
-			for j := 0; j < len(d.rows[i]); j++ {
-				if j < (d.width) {
-					buf.WriteString(string(d.rendered[i][j]))
-				}
+	for i := 0; i < len(d.rows) && i < (d.height-bottomPadding); i++ {
+
+		for j := 0; j < len(d.rows[i]); j++ {
+			if j < (d.width) {
+				buf.WriteString(string(d.rendered[i][j]))
 			}
-			buf.WriteString("\r\n")
-			printed++
 		}
+		buf.WriteString("\r\n")
+		printed++
 	}
 
-	for ; printed < d.height-2; printed++ {
+	for ; printed < d.height-bottomPadding; printed++ {
+		buf.WriteString("\r\n")
 	}
 
 	for k := 0; k < d.width; k++ {
@@ -264,5 +275,5 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	buf.WriteString(fmt.Sprintf("%s\r\n", d.msgtatus))
+	buf.WriteString(fmt.Sprintf("%s <---> (h: %v, w: %v)\r\n", d.msgtatus, d.height, d.width))
 }
