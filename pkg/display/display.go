@@ -89,7 +89,7 @@ func (d *Display) MoveCursor(dir byte) {
 			d.cx++
 		} else if d.cy >= 1 && d.cy < (d.height-bottomPadding) {
 			d.cy++
-			d.cx = 0
+			d.cx = 1
 		}
 	case ARROW_DOWN:
 		if d.cy < (d.height - bottomPadding) {
@@ -100,7 +100,6 @@ func (d *Display) MoveCursor(dir byte) {
 	case ARROW_UP:
 		if d.cy > 1 {
 			if (d.cx - 1) <= (len(d.rendered[d.cy-2]) - 1) {
-				d.SetStatusMessage(fmt.Sprintf("%d <= %d", d.cx-1, (len(d.rendered[d.cy-1]) - 1)))
 				d.cy--
 			}
 		}
