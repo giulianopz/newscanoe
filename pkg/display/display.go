@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/termios"
 	"golang.org/x/sys/unix"
 )
@@ -30,12 +31,12 @@ const (
 )
 
 type Display struct {
-	// cursor's position within the file
+	// cursor's position within terminal coordinates
 	cx int
 	cy int
-	// file's position
-	rowoff int
-	coloff int
+	// cursor's position within rendered rows
+	startoff int
+	endoff   int
 	// win size
 	height int
 	width  int
@@ -47,6 +48,7 @@ type Display struct {
 
 	rows     [][]byte
 	rendered [][]byte
+	cache    cache.Cache
 
 	pages          int
 	currentPage    int
@@ -57,16 +59,19 @@ type Display struct {
 
 func New(in uintptr) *Display {
 	d := &Display{
-		cx: 1,
-		cy: 1,
+		cx:       1,
+		cy:       1,
+		startoff: 0,
+		endoff:   0,
+		cache:    cache.Cache{},
 	}
+
+	d.SetWindowSize(in)
+	d.SetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-r = reload | Ctrl-R = reload all")
 
 	if err := d.LoadURLs(); err != nil {
 		log.Fatal(err)
 	}
-
-	d.SetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-r = reload | Ctrl-R = reload all")
-	d.SetWindowSize(in)
 
 	return d
 }
@@ -96,12 +101,16 @@ func (d *Display) MoveCursor(dir byte) {
 			if (d.cx - 1) <= (len(d.rendered[d.cy]) - 1) {
 				d.cy++
 			}
+		} else if d.endoff < len(d.rendered)-1 {
+			d.startoff++
 		}
 	case ARROW_UP:
 		if d.cy > 1 {
 			if (d.cx - 1) <= (len(d.rendered[d.cy-2]) - 1) {
 				d.cy--
 			}
+		} else if d.startoff > 0 {
+			d.startoff--
 		}
 	}
 }
@@ -200,7 +209,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
 	default:
-		//fmt.Fprintf(os.Stdout, "keystroke: %v\r\n", input)
+		//d.SetStatusMessage(fmt.Sprintf("keystroke: %v\r\n", input))
 	}
 }
 
@@ -243,7 +252,10 @@ func (d *Display) LoadURLs() error {
 
 	home := os.Getenv("HOME")
 
-	file, _ := os.Open(home + "/.newsboat/urls")
+	file, err := os.Open(home + "/.newsboat/urls")
+	if err != nil {
+		panic(err)
+	}
 	defer file.Close()
 
 	d.rows = make([][]byte, 0)
@@ -256,17 +268,26 @@ func (d *Display) LoadURLs() error {
 		if !strings.Contains(string(url), "#") {
 			d.rows = append(d.rows, url)
 			d.rendered = append(d.rendered, url)
+			//d.cache.Feeds = append(d.cache.Feeds, cache.Feed{Url: string(url)})
 		}
 	}
+
 	return nil
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
 
+	d.endoff = (len(d.rendered) - 1)
+	if d.endoff > (d.height - bottomPadding) {
+		d.endoff = d.height - bottomPadding - 1
+	}
+	d.endoff += d.startoff
+
 	var printed int
-	for i := 0; i < len(d.rows) && i < (d.height-bottomPadding); i++ {
+	for i := d.startoff; i <= d.endoff; i++ {
 
 		for j := 0; j < len(d.rows[i]); j++ {
+			//TODO handle rows longer than screen's width
 			if j < (d.width) {
 				buf.WriteString(string(d.rendered[i][j]))
 			}
@@ -284,6 +305,6 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	tracking := fmt.Sprintf("(y:%v,x:%v)(h:%v,w:%v)", d.cy, d.cx, d.height, d.width)
+	tracking := fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
 	buf.WriteString(fmt.Sprintf("%s %135s\r\n", d.msgtatus, tracking))
 }
