@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/giulianopz/newscanoe/pkg/display"
@@ -42,6 +44,18 @@ func main() {
 	}()
 
 	go func() {
+
+		defer func() {
+			if r := recover(); r != nil {
+				f, err := os.OpenFile("err.dump", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					//TODO
+					fmt.Println(err)
+				}
+				fmt.Fprint(f, string(debug.Stack()))
+			}
+		}()
+
 		for {
 			d.RefreshScreen()
 			d.ProcessKeyStroke(in, quitC)

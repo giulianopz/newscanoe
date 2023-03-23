@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/termios"
+	"github.com/mmcdole/gofeed"
 	"golang.org/x/sys/unix"
 )
 
@@ -34,10 +36,10 @@ type Display struct {
 	// cursor's position within terminal coordinates
 	cx int
 	cy int
-	// cursor's position within rendered rows
+	// limits of rendered window
 	startoff int
 	endoff   int
-	// win size
+	// window size
 	height int
 	width  int
 
@@ -206,8 +208,14 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	switch input {
 	case ctrlPlus('q'), 'q':
 		d.Quit(quitC)
+
+	case ctrlPlus('r'):
+		d.Reload(string(d.rows[d.cy-1+d.startoff]))
+		d.RefreshScreen()
+
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
+
 	default:
 		//d.SetStatusMessage(fmt.Sprintf("keystroke: %v\r\n", input))
 	}
@@ -268,11 +276,33 @@ func (d *Display) LoadURLs() error {
 		if !strings.Contains(string(url), "#") {
 			d.rows = append(d.rows, url)
 			d.rendered = append(d.rendered, url)
-			//d.cache.Feeds = append(d.cache.Feeds, cache.Feed{Url: string(url)})
+			d.cache.Feeds = append(d.cache.Feeds, cache.Feed{Url: string(url)})
 		}
 	}
 
 	return nil
+}
+
+var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+
+func (d *Display) Reload(url string) {
+
+	fp := gofeed.NewParser()
+	feed, err := fp.ParseURL(url)
+	if err != nil {
+		// TODO
+		panic(err)
+	}
+
+	title := nonAlphaNumericRegex.ReplaceAllString(feed.Title, "")
+
+	for _, f := range d.cache.Feeds {
+		if f.Url == url {
+			f.Title = title
+		}
+	}
+
+	d.rendered[d.cy-1+d.startoff] = []byte(title)
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
@@ -286,7 +316,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
-		for j := 0; j < len(d.rows[i]); j++ {
+		for j := 0; j < len(d.rendered[i]); j++ {
 			//TODO handle rows longer than screen's width
 			if j < (d.width) {
 				buf.WriteString(string(d.rendered[i][j]))
