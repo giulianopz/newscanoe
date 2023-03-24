@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/termios"
 	"github.com/giulianopz/newscanoe/pkg/util"
@@ -17,7 +19,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var bottomPadding int = 3
+const bottomPadding int = 3
 
 const (
 	// keys
@@ -228,6 +230,8 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			switch d.currentSection {
 			case URLS_LIST:
 				d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
+			case ARTICLES_LIST:
+				d.LoadArticle(string(d.rows[d.cy-1+d.startoff]))
 			}
 		}
 
@@ -235,6 +239,9 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case ARTICLES_LIST:
+				d.LoadURLs()
+			case ARTICLE_TEXT:
+				//TODO return to articles
 				d.LoadURLs()
 			}
 		}
@@ -303,10 +310,10 @@ func (d *Display) LoadURLs() error {
 		}
 		defer file.Close()
 
-		fscanner := bufio.NewScanner(file)
-		for fscanner.Scan() {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
 
-			url := fscanner.Bytes()
+			url := scanner.Bytes()
 			if !strings.Contains(string(url), "#") {
 				d.rows = append(d.rows, url)
 				d.rendered = append(d.rendered, url)
@@ -367,6 +374,7 @@ func (d *Display) LoadArticles(url string) {
 
 			d.rows = make([][]byte, 0)
 			d.rendered = make([][]byte, 0)
+
 			for _, i := range f.Items {
 				d.rows = append(d.rows, []byte(i.Link))
 
@@ -381,6 +389,75 @@ func (d *Display) LoadArticles(url string) {
 	d.currentSection = ARTICLES_LIST
 }
 
+func (d *Display) LoadArticle(link string) {
+
+	for _, f := range d.cache.Feeds {
+
+		for _, i := range f.Items {
+
+			if i.Link == link {
+
+				resp, err := http.Get(i.Link)
+				if err != nil {
+					panic(err)
+				}
+				defer resp.Body.Close()
+
+				converter := md.NewConverter("", true, nil)
+				markdown, err := converter.ConvertReader(resp.Body)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				d.rows = make([][]byte, 0)
+				d.rendered = make([][]byte, 0)
+
+				/* 				f, err := os.OpenFile("trace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				   				if err != nil {
+				   					d.SetStatusMessage(err.Error())
+				   				}
+				   				_, err = f.Write(markdown.Bytes())
+				   				if err != nil {
+				   					d.SetStatusMessage(err.Error())
+				   				}
+				   				f.Sync() */
+
+				for _, line := range strings.Split(markdown.String(), "\n") {
+
+					line := strings.Trim(line, " ")
+					if line != "" {
+
+						if len(line) > d.width {
+
+							tmp := make([]byte, 0)
+							for _, r := range line {
+								if len(tmp) >= d.width {
+									d.rows = append(d.rows, tmp)
+									d.rendered = append(d.rendered, tmp)
+									tmp = make([]byte, 0)
+								}
+								tmp = append(tmp, byte(r))
+							}
+							if len(tmp) != 0 {
+								d.rows = append(d.rows, tmp)
+								d.rendered = append(d.rendered, tmp)
+							}
+
+						} else {
+							d.rows = append(d.rows, []byte(line))
+							d.rendered = append(d.rendered, []byte(line))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	d.cy = 1
+	d.cx = 1
+	d.currentSection = ARTICLE_TEXT
+}
+
 func (d *Display) Draw(buf *bytes.Buffer) {
 
 	d.endoff = (len(d.rendered) - 1)
@@ -393,9 +470,11 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		for j := 0; j < len(d.rendered[i]); j++ {
-			//TODO handle rows longer than screen's width
 			if j < (d.width) {
 				buf.WriteString(string(d.rendered[i][j]))
+			} else {
+				// TODO
+				d.SetStatusMessage("char is beyond win width")
 			}
 		}
 		buf.WriteString("\r\n")
@@ -414,5 +493,5 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	// TODO enable only if --debug falg is set to true
 	tracking := fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
 
-	buf.WriteString(fmt.Sprintf("%s %135s\r\n", d.msgtatus, tracking))
+	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.msgtatus, tracking))
 }
