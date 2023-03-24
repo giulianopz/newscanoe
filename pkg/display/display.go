@@ -20,6 +20,7 @@ import (
 var bottomPadding int = 3
 
 const (
+	ENTER      = 13
 	BACKSPACE  = 127
 	ARROW_LEFT = iota
 	ARROW_RIGHT
@@ -210,15 +211,17 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ctrlPlus('q'), 'q':
 		d.Quit(quitC)
 
-	case ctrlPlus('r'):
+	case ctrlPlus('r'), 'r':
 		d.Reload(string(d.rows[d.cy-1+d.startoff]))
 		d.RefreshScreen()
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
-
-	default:
-		//d.SetStatusMessage(fmt.Sprintf("keystroke: %v\r\n", input))
+	case ENTER:
+		d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
+		d.RefreshScreen()
+		/* 	default:
+		d.SetStatusMessage(fmt.Sprintf("keystroke: %v", input)) */
 	}
 }
 
@@ -320,6 +323,24 @@ func (d *Display) Reload(url string) {
 	d.rendered[d.cy-1+d.startoff] = []byte(title)
 }
 
+func (d *Display) LoadArticles(url string) {
+
+	for _, f := range d.cache.Feeds {
+		if f.Url == url {
+
+			d.rows = make([][]byte, 0)
+			d.rendered = make([][]byte, 0)
+			for _, i := range f.Items {
+				d.rows = append(d.rows, []byte(i.Link))
+
+				dateAndArticleName := fmt.Sprintf("%-20s %s", i.PubDate.Format("2006-January-02"), i.Title)
+				d.rendered = append(d.rendered, []byte(dateAndArticleName))
+			}
+		}
+	}
+
+}
+
 func (d *Display) Draw(buf *bytes.Buffer) {
 
 	d.endoff = (len(d.rendered) - 1)
@@ -350,6 +371,8 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
+	// TODO enable only if --debug falg is set to true
 	tracking := fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+
 	buf.WriteString(fmt.Sprintf("%s %135s\r\n", d.msgtatus, tracking))
 }
