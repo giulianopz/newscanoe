@@ -20,6 +20,7 @@ import (
 var bottomPadding int = 3
 
 const (
+	// keys
 	ENTER      = 13
 	BACKSPACE  = 127
 	ARROW_LEFT = iota
@@ -32,6 +33,10 @@ const (
 	PAGE_UP
 	PAGE_DOWN
 	QUIT
+	// sections
+	URLS_LIST = iota
+	ARTICLES_LIST
+	ARTICLE_TEXT
 )
 
 type Display struct {
@@ -54,11 +59,10 @@ type Display struct {
 	rendered [][]byte
 	cache    cache.Cache
 
+	//TODO show pages coordinates
 	pages          int
 	currentPage    int
-	currentSection string
-	prev           string
-	next           string
+	currentSection int
 }
 
 func New(in uintptr) *Display {
@@ -208,6 +212,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	input := readKeyStroke(fd)
 
 	switch input {
+
 	case ctrlPlus('q'), 'q':
 		d.Quit(quitC)
 
@@ -217,9 +222,18 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
+
 	case ENTER:
 		d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
-		d.RefreshScreen()
+
+	case BACKSPACE:
+		{
+			switch d.currentSection {
+			case ARTICLES_LIST:
+				d.LoadURLs()
+			}
+		}
+
 		/* 	default:
 		d.SetStatusMessage(fmt.Sprintf("keystroke: %v", input)) */
 	}
@@ -262,32 +276,44 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 
 func (d *Display) LoadURLs() error {
 
-	filePath, err := util.GetUrlsFilePath()
-	if err != nil {
-		// TODO
-		panic(err)
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
 	d.rows = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 
-	fscanner := bufio.NewScanner(file)
-	for fscanner.Scan() {
+	if len(d.cache.Feeds) != 0 {
 
-		url := fscanner.Bytes()
-		if !strings.Contains(string(url), "#") {
-			d.rows = append(d.rows, url)
-			d.rendered = append(d.rendered, url)
-			d.cache.Feeds = append(d.cache.Feeds, &cache.Feed{Url: string(url)})
+		for _, f := range d.cache.Feeds {
+			d.rows = append(d.rows, []byte(f.Url))
+			d.rendered = append(d.rendered, []byte(f.Title))
+		}
+	} else {
+		filePath, err := util.GetUrlsFilePath()
+		if err != nil {
+			// TODO
+			panic(err)
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+
+		fscanner := bufio.NewScanner(file)
+		for fscanner.Scan() {
+
+			url := fscanner.Bytes()
+			if !strings.Contains(string(url), "#") {
+				d.rows = append(d.rows, url)
+				d.rendered = append(d.rendered, url)
+				d.cache.Feeds = append(d.cache.Feeds, &cache.Feed{
+					Url:   string(url),
+					Title: string(url),
+				})
+			}
 		}
 	}
 
+	d.currentSection = URLS_LIST
 	return nil
 }
 
@@ -338,7 +364,7 @@ func (d *Display) LoadArticles(url string) {
 			}
 		}
 	}
-
+	d.currentSection = ARTICLES_LIST
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
