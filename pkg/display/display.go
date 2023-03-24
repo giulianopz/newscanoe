@@ -12,6 +12,7 @@ import (
 
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/termios"
+	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
 	"golang.org/x/sys/unix"
 )
@@ -258,9 +259,13 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 
 func (d *Display) LoadURLs() error {
 
-	home := os.Getenv("HOME")
+	filePath, err := util.GetUrlsFilePath()
+	if err != nil {
+		// TODO
+		panic(err)
+	}
 
-	file, err := os.Open(home + "/.newsboat/urls")
+	file, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
 	}

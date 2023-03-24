@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/giulianopz/newscanoe/pkg/util"
 )
 
 type Feed struct {
@@ -24,9 +26,14 @@ type Cache struct {
 }
 
 func (c *Cache) Encode() {
-	home := os.Getenv("HOME")
 
-	file, err := os.OpenFile(home+"/.newsboat/cache", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	filePath, err := util.GetCacheFilePath()
+	if err != nil {
+		//TODO
+		panic(err)
+	}
+
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,9 +47,13 @@ func (c *Cache) Encode() {
 
 func (c *Cache) Decode() error {
 
-	home := os.Getenv("HOME")
+	filePath, err := util.GetCacheFilePath()
+	if err != nil {
+		//TODO
+		panic(err)
+	}
 
-	file, err := os.Open(home + "/.newsboat/cache")
+	file, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
 	}
