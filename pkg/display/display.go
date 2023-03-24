@@ -329,6 +329,7 @@ func (d *Display) Reload(url string) {
 	}
 
 	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
+	title = strings.Trim(title, " ")
 
 	for _, cachedFeed := range d.cache.Feeds {
 		if cachedFeed.Url == url {
