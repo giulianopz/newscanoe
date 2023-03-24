@@ -281,7 +281,7 @@ func (d *Display) LoadURLs() error {
 		if !strings.Contains(string(url), "#") {
 			d.rows = append(d.rows, url)
 			d.rendered = append(d.rendered, url)
-			d.cache.Feeds = append(d.cache.Feeds, cache.Feed{Url: string(url)})
+			d.cache.Feeds = append(d.cache.Feeds, &cache.Feed{Url: string(url)})
 		}
 	}
 
@@ -293,17 +293,27 @@ var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
 func (d *Display) Reload(url string) {
 
 	fp := gofeed.NewParser()
-	feed, err := fp.ParseURL(url)
+	parsedFeed, err := fp.ParseURL(url)
 	if err != nil {
 		// TODO
 		panic(err)
 	}
 
-	title := nonAlphaNumericRegex.ReplaceAllString(feed.Title, "")
+	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
 
-	for _, f := range d.cache.Feeds {
-		if f.Url == url {
-			f.Title = title
+	for _, cachedFeed := range d.cache.Feeds {
+		if cachedFeed.Url == url {
+			cachedFeed.Title = title
+			cachedFeed.Items = make([]*cache.Item, 0)
+
+			for _, parsedItem := range parsedFeed.Items {
+				cachedItem := &cache.Item{
+					Title:   parsedItem.Title,
+					Link:    parsedItem.Link,
+					PubDate: *parsedItem.PublishedParsed,
+				}
+				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+			}
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 type Feed struct {
 	Url   string
 	Title string
-	Items []Item
+	Items []*Item
 }
 
 type Item struct {
@@ -22,7 +22,7 @@ type Item struct {
 }
 
 type Cache struct {
-	Feeds []Feed
+	Feeds []*Feed
 }
 
 func (c *Cache) Encode() {
@@ -59,9 +59,9 @@ func (c *Cache) Decode() error {
 	}
 	defer file.Close()
 
-	var feeds []Feed
+	var feeds []*Feed
 	d := gob.NewDecoder(file)
-	if err := d.Decode(feeds); err != nil {
+	if err := d.Decode(&feeds); err != nil {
 		panic(err)
 	}
 
