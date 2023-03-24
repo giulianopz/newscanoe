@@ -313,7 +313,10 @@ func (d *Display) LoadURLs() error {
 		}
 	}
 
+	d.cy = 1
+	d.cx = 1
 	d.currentSection = URLS_LIST
+
 	return nil
 }
 
@@ -367,6 +370,9 @@ func (d *Display) LoadArticles(url string) {
 			}
 		}
 	}
+
+	d.cy = 1
+	d.cx = 1
 	d.currentSection = ARTICLES_LIST
 }
 
