@@ -95,10 +95,10 @@ func (d *Display) MoveCursor(dir byte) {
 			d.cx--
 		} else if d.cy > 1 {
 			d.cy--
-			d.cx = len(d.rendered[d.cy-1])
+			d.cx = len(d.rendered[d.cy-1+d.startoff])
 		}
 	case ARROW_RIGHT:
-		if (d.cx - 1) < (len(d.rendered[d.cy-1]) - 1) {
+		if (d.cx - 1) < (len(d.rendered[d.cy-1+d.startoff]) - 1) {
 			d.cx++
 		} else if d.cy >= 1 && d.cy < (d.height-bottomPadding) {
 			d.cy++
@@ -106,7 +106,7 @@ func (d *Display) MoveCursor(dir byte) {
 		}
 	case ARROW_DOWN:
 		if d.cy < (d.height - bottomPadding) {
-			if (d.cx - 1) <= (len(d.rendered[d.cy]) - 1) {
+			if (d.cx - 1) <= (len(d.rendered[d.cy+d.startoff]) - 1) {
 				d.cy++
 			}
 		} else if d.endoff < len(d.rendered)-1 {
@@ -114,7 +114,7 @@ func (d *Display) MoveCursor(dir byte) {
 		}
 	case ARROW_UP:
 		if d.cy > 1 {
-			if (d.cx - 1) <= (len(d.rendered[d.cy-2]) - 1) {
+			if (d.cx - 1) <= (len(d.rendered[d.cy-2+d.startoff]) - 1) {
 				d.cy--
 			}
 		} else if d.startoff > 0 {
@@ -317,7 +317,7 @@ func (d *Display) LoadURLs() error {
 	return nil
 }
 
-var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 \.\-]+`)
 
 func (d *Display) Reload(url string) {
 
@@ -332,7 +332,9 @@ func (d *Display) Reload(url string) {
 	title = strings.Trim(title, " ")
 
 	for _, cachedFeed := range d.cache.Feeds {
+
 		if cachedFeed.Url == url {
+
 			cachedFeed.Title = title
 			cachedFeed.Items = make([]*cache.Item, 0)
 
