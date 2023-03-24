@@ -224,7 +224,12 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		d.MoveCursor(input)
 
 	case ENTER:
-		d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
+		{
+			switch d.currentSection {
+			case URLS_LIST:
+				d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
+			}
+		}
 
 	case BACKSPACE:
 		{
