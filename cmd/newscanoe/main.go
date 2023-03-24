@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"syscall"
 
 	"github.com/giulianopz/newscanoe/pkg/display"
@@ -47,12 +46,7 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				f, err := os.OpenFile("err.dump", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					//TODO
-					fmt.Println(err)
-				}
-				fmt.Fprint(f, string(debug.Stack()))
+				d.SetStatusMessage(fmt.Sprintf("recover: %v", r))
 			}
 		}()
 
