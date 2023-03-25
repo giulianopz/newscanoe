@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -78,7 +79,6 @@ func New(in uintptr) *Display {
 	}
 
 	d.SetWindowSize(in)
-	d.SetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-r = reload | Ctrl-R = reload all")
 
 	if err := d.LoadURLs(); err != nil {
 		log.Fatal(err)
@@ -223,6 +223,11 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		d.LoadFeed(string(d.rows[d.cy-1+d.startoff]))
 		d.RefreshScreen()
 
+	case ctrlPlus('o'), 'o':
+		if d.currentSection == ARTICLE_TEXT {
+			d.openWithBrowser(d.currentArticleUrl)
+		}
+
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
 
@@ -230,7 +235,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case URLS_LIST:
-				d.LoadArticles(string(d.rows[d.cy-1+d.startoff]))
+				d.LoadArticlesList(string(d.rows[d.cy-1+d.startoff]))
 			case ARTICLES_LIST:
 				d.LoadArticle(string(d.rows[d.cy-1+d.startoff]))
 			}
@@ -241,8 +246,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			switch d.currentSection {
 			case ARTICLES_LIST:
 				d.LoadURLs()
+				d.currentFeedUrl = ""
 			case ARTICLE_TEXT:
-				d.LoadArticles(d.currentFeedUrl)
+				d.LoadArticlesList(d.currentFeedUrl)
+				d.currentArticleUrl = ""
 			}
 		}
 
@@ -328,6 +335,8 @@ func (d *Display) LoadURLs() error {
 	d.cy = 1
 	d.cx = 1
 	d.currentSection = URLS_LIST
+	// Ctrl-R/R = reload all
+	d.SetStatusMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
 
 	return nil
 }
@@ -368,7 +377,7 @@ func (d *Display) LoadFeed(url string) {
 	d.currentFeedUrl = url
 }
 
-func (d *Display) LoadArticles(url string) {
+func (d *Display) LoadArticlesList(url string) {
 
 	for _, f := range d.cache.Feeds {
 		if f.Url == url {
@@ -388,6 +397,7 @@ func (d *Display) LoadArticles(url string) {
 	d.cy = 1
 	d.cx = 1
 	d.currentSection = ARTICLES_LIST
+	d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
 }
 
 func (d *Display) LoadArticle(url string) {
@@ -458,6 +468,7 @@ func (d *Display) LoadArticle(url string) {
 	d.cx = 1
 	d.currentArticleUrl = url
 	d.currentSection = ARTICLE_TEXT
+	d.SetStatusMessage("HELP: Ctrl-o/o = open with browser | Backspace = go back")
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
@@ -496,4 +507,26 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	tracking := fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
 
 	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.msgtatus, tracking))
+}
+
+/*
+openWithBrowser opens the current viewed article with the default browser for desktop environment.
+
+see: https://wiki.debian.org/DefaultWebBrowser
+*/
+func (d *Display) openWithBrowser(url string) {
+
+	if url != "" {
+		err := exec.Command("xdg-open", url).Run()
+		if err != nil {
+			switch e := err.(type) {
+			case *exec.Error:
+				d.SetStatusMessage(fmt.Sprintf("failed executing: %v", err))
+			case *exec.ExitError:
+				d.SetStatusMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
+			default:
+				panic(err)
+			}
+		}
+	}
 }
