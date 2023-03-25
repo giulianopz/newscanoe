@@ -25,6 +25,8 @@ type Item struct {
 	PubDate time.Time
 }
 
+// TODO sort maps
+
 func (c *Cache) Encode() {
 
 	filePath, err := util.GetCacheFilePath()
