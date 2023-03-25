@@ -520,6 +520,12 @@ see: https://wiki.debian.org/DefaultWebBrowser
 */
 func (d *Display) openWithBrowser(url string) {
 
+	// check if the app is running in a headless machine
+	displayVar, set := os.LookupEnv("DISPLAY")
+	if !set || displayVar == "" {
+		return
+	}
+
 	if url != "" {
 		err := exec.Command("xdg-open", url).Run()
 		if err != nil {
