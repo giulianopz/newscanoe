@@ -63,8 +63,9 @@ type Display struct {
 
 	/* 	totalsRows     int
 	   	currentRow     int */
-	currentSection int
-	lastVisitedUrl string
+	currentSection    int
+	currentArticleUrl string
+	currentFeedUrl    string
 }
 
 func New(in uintptr) *Display {
@@ -241,7 +242,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			case ARTICLES_LIST:
 				d.LoadURLs()
 			case ARTICLE_TEXT:
-				d.LoadArticles(d.lastVisitedUrl)
+				d.LoadArticles(d.currentFeedUrl)
 			}
 		}
 
@@ -364,7 +365,7 @@ func (d *Display) LoadFeed(url string) {
 	}
 
 	d.rendered[d.cy-1+d.startoff] = []byte(title)
-	d.lastVisitedUrl = url
+	d.currentFeedUrl = url
 }
 
 func (d *Display) LoadArticles(url string) {
@@ -386,7 +387,6 @@ func (d *Display) LoadArticles(url string) {
 
 	d.cy = 1
 	d.cx = 1
-	d.lastVisitedUrl = url
 	d.currentSection = ARTICLES_LIST
 }
 
@@ -456,6 +456,7 @@ func (d *Display) LoadArticle(url string) {
 
 	d.cy = 1
 	d.cx = 1
+	d.currentArticleUrl = url
 	d.currentSection = ARTICLE_TEXT
 }
 
