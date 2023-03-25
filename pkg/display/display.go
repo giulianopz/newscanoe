@@ -20,7 +20,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const bottomPadding int = 3
+var DebugMode bool
 
 const (
 	// keys
@@ -40,6 +40,8 @@ const (
 	URLS_LIST = iota
 	ARTICLES_LIST
 	ARTICLE_TEXT
+	//
+	bottomPadding int = 3
 )
 
 type Display struct {
@@ -504,8 +506,10 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	buf.WriteString("\r\n")
 
 	// TODO enable only if --debug falg is set to true
-	tracking := fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
-
+	var tracking string
+	if DebugMode {
+		tracking = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+	}
 	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.msgtatus, tracking))
 }
 

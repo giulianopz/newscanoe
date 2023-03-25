@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -22,6 +23,9 @@ var (
 )
 
 func main() {
+
+	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
+	flag.Parse()
 
 	origTermios := termios.EnableRawMode(in)
 	defer termios.DisableRawMode(in, origTermios)
