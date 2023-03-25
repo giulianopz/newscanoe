@@ -9,6 +9,10 @@ import (
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
 
+type Cache struct {
+	Feeds map[string]*Feed
+}
+
 type Feed struct {
 	Url   string
 	Title string
@@ -19,10 +23,6 @@ type Item struct {
 	Title   string
 	Url     string
 	PubDate time.Time
-}
-
-type Cache struct {
-	Feeds []*Feed
 }
 
 func (c *Cache) Encode() {
@@ -59,7 +59,7 @@ func (c *Cache) Decode() error {
 	}
 	defer file.Close()
 
-	var feeds []*Feed
+	var feeds map[string]*Feed
 	d := gob.NewDecoder(file)
 	if err := d.Decode(&feeds); err != nil {
 		panic(err)

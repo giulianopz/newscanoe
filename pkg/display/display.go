@@ -303,37 +303,46 @@ func (d *Display) LoadURLs() error {
 	d.rows = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 
-	if len(d.cache.Feeds) != 0 {
+	filePath, err := util.GetUrlsFilePath()
+	if err != nil {
+		// TODO
+		panic(err)
+	}
 
-		for _, f := range d.cache.Feeds {
-			d.rows = append(d.rows, []byte(f.Url))
-			d.rendered = append(d.rendered, []byte(f.Title))
-		}
-	} else {
-		filePath, err := util.GetUrlsFilePath()
-		if err != nil {
-			// TODO
-			panic(err)
-		}
+	//TODO create dir and file if they don't exist
+	file, err := os.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
 
-		file, err := os.Open(filePath)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
+	// TODO load from gob file if it exists
+	if len(d.cache.Feeds) == 0 {
+		d.cache.Feeds = make(map[string]*cache.Feed, 0)
+	}
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
 
-			url := scanner.Bytes()
-			if !strings.Contains(string(url), "#") {
+		url := scanner.Bytes()
+		if !strings.Contains(string(url), "#") {
+			if _, present := d.cache.Feeds[string(url)]; !present {
+
 				d.rows = append(d.rows, url)
 				d.rendered = append(d.rendered, url)
-				d.cache.Feeds = append(d.cache.Feeds, &cache.Feed{
+				d.cache.Feeds[string(url)] = &cache.Feed{
 					Url:   string(url),
 					Title: string(url),
-				})
+				}
 			}
+		}
+	}
+
+	if len(d.cache.Feeds) != 0 {
+		for _, f := range d.cache.Feeds {
+
+			d.rows = append(d.rows, []byte(f.Url))
+			d.rendered = append(d.rendered, []byte(f.Title))
 		}
 	}
 
@@ -360,56 +369,55 @@ func (d *Display) LoadFeed(url string) {
 	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
 	title = strings.Trim(title, " ")
 
-	for _, cachedFeed := range d.cache.Feeds {
+	cachedFeed, present := d.cache.Feeds[url]
+	if present {
+		cachedFeed.Title = title
+		cachedFeed.Items = make([]*cache.Item, 0)
 
-		if cachedFeed.Url == url {
-
-			cachedFeed.Title = title
-			cachedFeed.Items = make([]*cache.Item, 0)
-
-			for _, parsedItem := range parsedFeed.Items {
-				cachedItem := &cache.Item{
-					Title:   parsedItem.Title,
-					Url:     parsedItem.Link,
-					PubDate: *parsedItem.PublishedParsed,
-				}
-				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+		for _, parsedItem := range parsedFeed.Items {
+			cachedItem := &cache.Item{
+				Title:   parsedItem.Title,
+				Url:     parsedItem.Link,
+				PubDate: *parsedItem.PublishedParsed,
 			}
+			cachedFeed.Items = append(cachedFeed.Items, cachedItem)
 		}
-	}
 
-	d.rendered[d.cy-1+d.startoff] = []byte(title)
-	d.currentFeedUrl = url
+		d.rendered[d.cy-1+d.startoff] = []byte(title)
+		d.currentFeedUrl = url
+	} else {
+		d.SetStatusMessage(fmt.Sprintf("url not found: %s", url))
+	}
 }
 
 func (d *Display) LoadArticlesList(url string) {
 
-	for _, f := range d.cache.Feeds {
-		if f.Url == url {
+	cachedFeed, present := d.cache.Feeds[url]
+	if present {
 
-			d.rows = make([][]byte, 0)
-			d.rendered = make([][]byte, 0)
+		d.rows = make([][]byte, 0)
+		d.rendered = make([][]byte, 0)
 
-			for _, i := range f.Items {
-				d.rows = append(d.rows, []byte(i.Url))
+		for _, item := range cachedFeed.Items {
 
-				dateAndArticleName := fmt.Sprintf("%-20s %s", i.PubDate.Format("2006-January-02"), i.Title)
-				d.rendered = append(d.rendered, []byte(dateAndArticleName))
-			}
+			d.rows = append(d.rows, []byte(item.Url))
+			dateAndArticleName := fmt.Sprintf("%-20s %s", item.PubDate.Format("2006-January-02"), item.Title)
+			d.rendered = append(d.rendered, []byte(dateAndArticleName))
 		}
+		d.cy = 1
+		d.cx = 1
+		d.currentSection = ARTICLES_LIST
+		d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
+	} else {
+		d.SetStatusMessage(fmt.Sprintf("url not found: %s", url))
 	}
-
-	d.cy = 1
-	d.cx = 1
-	d.currentSection = ARTICLES_LIST
-	d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
 }
 
 func (d *Display) LoadArticle(url string) {
 
-	for _, f := range d.cache.Feeds {
-
-		for _, i := range f.Items {
+	cachedFeed, present := d.cache.Feeds[d.currentFeedUrl]
+	if present {
+		for _, i := range cachedFeed.Items {
 
 			if i.Url == url {
 
@@ -466,19 +474,21 @@ func (d *Display) LoadArticle(url string) {
 					}
 				}
 			}
+
+			d.cy = 1
+			d.cx = 1
+			d.currentArticleUrl = url
+			d.currentSection = ARTICLE_TEXT
+
+			var browserHelp string
+			if !headless() {
+				browserHelp = "Ctrl-o/o = open with browser |"
+			}
+			d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 		}
+	} else {
+		d.SetStatusMessage(fmt.Sprintf("url not found: %s", d.currentArticleUrl))
 	}
-
-	d.cy = 1
-	d.cx = 1
-	d.currentArticleUrl = url
-	d.currentSection = ARTICLE_TEXT
-
-	var browserHelp string
-	if !headless() {
-		browserHelp = "Ctrl-o/o = open with browser |"
-	}
-	d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
