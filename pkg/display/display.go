@@ -227,7 +227,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ctrlPlus('o'), 'o':
 		if d.currentSection == ARTICLE_TEXT {
-			d.openWithBrowser(d.currentArticleUrl)
+
+			if !headless() {
+				d.openWithBrowser(d.currentArticleUrl)
+			}
 		}
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
@@ -470,7 +473,12 @@ func (d *Display) LoadArticle(url string) {
 	d.cx = 1
 	d.currentArticleUrl = url
 	d.currentSection = ARTICLE_TEXT
-	d.SetStatusMessage("HELP: Ctrl-o/o = open with browser | Backspace = go back")
+
+	var browserHelp string
+	if !headless() {
+		browserHelp = "Ctrl-o/o = open with browser |"
+	}
+	d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
@@ -515,16 +523,10 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 
 /*
 openWithBrowser opens the current viewed article with the default browser for desktop environment.
-
+The environment variable DISPLAY is used to detect if the app is running on a headless machine.
 see: https://wiki.debian.org/DefaultWebBrowser
 */
 func (d *Display) openWithBrowser(url string) {
-
-	// check if the app is running in a headless machine
-	displayVar, set := os.LookupEnv("DISPLAY")
-	if !set || displayVar == "" {
-		return
-	}
 
 	if url != "" {
 		err := exec.Command("xdg-open", url).Run()
@@ -539,4 +541,10 @@ func (d *Display) openWithBrowser(url string) {
 			}
 		}
 	}
+}
+
+// headless detects if this is a headless machine by looking up the DISPLAY environment variable
+func headless() bool {
+	displayVar, set := os.LookupEnv("DISPLAY")
+	return !set || displayVar == ""
 }
