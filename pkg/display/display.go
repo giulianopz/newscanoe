@@ -61,10 +61,10 @@ type Display struct {
 	rendered [][]byte
 	cache    cache.Cache
 
-	//TODO show pages coordinates
-	pages          int
-	currentPage    int
+	/* 	totalsRows     int
+	   	currentRow     int */
 	currentSection int
+	lastVisitedUrl string
 }
 
 func New(in uintptr) *Display {
@@ -219,7 +219,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		d.Quit(quitC)
 
 	case ctrlPlus('r'), 'r':
-		d.Reload(string(d.rows[d.cy-1+d.startoff]))
+		d.LoadFeed(string(d.rows[d.cy-1+d.startoff]))
 		d.RefreshScreen()
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
@@ -241,8 +241,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			case ARTICLES_LIST:
 				d.LoadURLs()
 			case ARTICLE_TEXT:
-				//TODO return to articles
-				d.LoadURLs()
+				d.LoadArticles(d.lastVisitedUrl)
 			}
 		}
 
@@ -334,7 +333,7 @@ func (d *Display) LoadURLs() error {
 
 var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 \.\-]+`)
 
-func (d *Display) Reload(url string) {
+func (d *Display) LoadFeed(url string) {
 
 	fp := gofeed.NewParser()
 	parsedFeed, err := fp.ParseURL(url)
@@ -356,7 +355,7 @@ func (d *Display) Reload(url string) {
 			for _, parsedItem := range parsedFeed.Items {
 				cachedItem := &cache.Item{
 					Title:   parsedItem.Title,
-					Link:    parsedItem.Link,
+					Url:     parsedItem.Link,
 					PubDate: *parsedItem.PublishedParsed,
 				}
 				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
@@ -365,6 +364,7 @@ func (d *Display) Reload(url string) {
 	}
 
 	d.rendered[d.cy-1+d.startoff] = []byte(title)
+	d.lastVisitedUrl = url
 }
 
 func (d *Display) LoadArticles(url string) {
@@ -376,7 +376,7 @@ func (d *Display) LoadArticles(url string) {
 			d.rendered = make([][]byte, 0)
 
 			for _, i := range f.Items {
-				d.rows = append(d.rows, []byte(i.Link))
+				d.rows = append(d.rows, []byte(i.Url))
 
 				dateAndArticleName := fmt.Sprintf("%-20s %s", i.PubDate.Format("2006-January-02"), i.Title)
 				d.rendered = append(d.rendered, []byte(dateAndArticleName))
@@ -386,18 +386,19 @@ func (d *Display) LoadArticles(url string) {
 
 	d.cy = 1
 	d.cx = 1
+	d.lastVisitedUrl = url
 	d.currentSection = ARTICLES_LIST
 }
 
-func (d *Display) LoadArticle(link string) {
+func (d *Display) LoadArticle(url string) {
 
 	for _, f := range d.cache.Feeds {
 
 		for _, i := range f.Items {
 
-			if i.Link == link {
+			if i.Url == url {
 
-				resp, err := http.Get(i.Link)
+				resp, err := http.Get(i.Url)
 				if err != nil {
 					panic(err)
 				}

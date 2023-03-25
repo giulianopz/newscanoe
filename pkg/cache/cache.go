@@ -17,7 +17,7 @@ type Feed struct {
 
 type Item struct {
 	Title   string
-	Link    string
+	Url     string
 	PubDate time.Time
 }
 
