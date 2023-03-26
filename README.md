@@ -12,5 +12,10 @@ Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$
 
 > Warn: the project is still a WIP 🚧
 
-
 [![asciicast](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ.svg)](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ)
+
+---
+
+### Credits
+
+Much of the wizardry used to control the terminal was made possible only thanks to the  well-written tutorial [Build Your Own Text Editor](https://viewsourcecode.org/snaptoken/kilo/) by Paige Ruten, which explains in depth the source code of [kilo](https://github.com/antirez/kilo), the infamous small text editor crafted by antirez.
