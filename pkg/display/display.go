@@ -522,7 +522,6 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	// TODO enable only if --debug falg is set to true
 	var tracking string
 	if DebugMode {
 		tracking = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
