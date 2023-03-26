@@ -3,6 +3,8 @@ package util
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/giulianopz/newscanoe/pkg/app"
 )
 
 const (
@@ -15,7 +17,7 @@ func GetUrlsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dirName, urlsFileName), nil
+	return filepath.Join(dirName, app.Name, urlsFileName), nil
 }
 
 func GetCacheFilePath() (string, error) {
@@ -23,5 +25,5 @@ func GetCacheFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dirName, cacheFileName), nil
+	return filepath.Join(dirName, app.Name, cacheFileName), nil
 }
