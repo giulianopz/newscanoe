@@ -12,8 +12,6 @@ import (
 )
 
 var (
-	in = os.Stdin.Fd()
-
 	quitC = make(chan bool, 0)
 	sigC  = make(chan os.Signal, 1)
 
@@ -27,10 +25,10 @@ func main() {
 	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
 	flag.Parse()
 
-	origTermios := termios.EnableRawMode(in)
-	defer termios.DisableRawMode(in, origTermios)
+	origTermios := termios.EnableRawMode(os.Stdin.Fd())
+	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
-	d := display.New(in)
+	d := display.New(os.Stdin.Fd())
 
 	signal.Notify(sigC, signals...)
 
@@ -38,7 +36,7 @@ func main() {
 		for {
 			s := <-sigC
 			if s == syscall.SIGWINCH {
-				d.SetWindowSize(in)
+				d.SetWindowSize(os.Stdin.Fd())
 				d.RefreshScreen()
 			} else {
 				d.Quit(quitC)
@@ -56,7 +54,7 @@ func main() {
 
 		for {
 			d.RefreshScreen()
-			d.ProcessKeyStroke(in, quitC)
+			d.ProcessKeyStroke(os.Stdin.Fd(), quitC)
 		}
 	}()
 

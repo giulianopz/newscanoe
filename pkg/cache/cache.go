@@ -24,44 +24,44 @@ type Item struct {
 	PubDate time.Time
 }
 
-func (c *Cache) Encode() {
+func (c *Cache) Encode() error {
 
 	filePath, err := util.GetCacheFilePath()
 	if err != nil {
-		//TODO
-		panic(err)
+		return err
 	}
 
+	// create if not exists
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer file.Close()
 
 	e := gob.NewEncoder(file)
 	if err := e.Encode(c.Feeds); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func (c *Cache) Decode() error {
 
 	filePath, err := util.GetCacheFilePath()
 	if err != nil {
-		//TODO
-		panic(err)
+		return err
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer file.Close()
 
 	var feeds []*Feed
 	d := gob.NewDecoder(file)
 	if err := d.Decode(&feeds); err != nil {
-		panic(err)
+		return err
 	}
 
 	c.Feeds = feeds

@@ -21,7 +21,7 @@ func GetUrlsFilePath() (string, error) {
 }
 
 func GetCacheFilePath() (string, error) {
-	dirName, err := os.UserConfigDir()
+	dirName, err := os.UserCacheDir()
 	if err != nil {
 		return "", err
 	}

@@ -3,7 +3,9 @@ package display
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -80,6 +82,10 @@ func New(in uintptr) *Display {
 	}
 
 	d.SetWindowSize(in)
+
+	if err := d.LoadCache(); err != nil {
+		panic(err)
+	}
 
 	if err := d.LoadURLs(); err != nil {
 		panic(err)
@@ -221,8 +227,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		d.Quit(quitC)
 
 	case ctrlPlus('r'), 'r':
-		d.LoadFeed(string(d.rows[d.cy-1+d.startoff]))
-		d.RefreshScreen()
+		if d.currentSection == URLS_LIST {
+			d.LoadFeed(string(d.rows[d.cy-1+d.startoff]))
+			d.RefreshScreen()
+		}
 
 	case ctrlPlus('o'), 'o':
 		if d.currentSection == ARTICLE_TEXT {
@@ -297,6 +305,24 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 	return nil
 }
 
+func (d *Display) LoadCache() error {
+	cachePath, err := util.GetCacheFilePath()
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(cachePath); err == nil {
+		if err := d.cache.Decode(); err != nil {
+			return err
+		}
+	} else if errors.Is(err, fs.ErrNotExist) {
+		// ignore
+		return nil
+	} else {
+		return err
+	}
+	return nil
+}
+
 func (d *Display) LoadURLs() error {
 
 	d.rows = make([][]byte, 0)
@@ -317,7 +343,6 @@ func (d *Display) LoadURLs() error {
 
 	cached := make(map[string]bool, 0)
 
-	// TODO load from gob file if it exists
 	if len(d.cache.Feeds) == 0 {
 		d.cache.Feeds = make([]*cache.Feed, 0)
 	} else {
@@ -369,6 +394,7 @@ func (d *Display) LoadFeed(url string) {
 	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
 	title = strings.Trim(title, " ")
 
+	var cached int
 	for _, cachedFeed := range d.cache.Feeds {
 		if cachedFeed.Url == url {
 			cachedFeed.Title = title
@@ -381,10 +407,17 @@ func (d *Display) LoadFeed(url string) {
 					PubDate: *parsedItem.PublishedParsed,
 				}
 				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+				cached++
 			}
 
 			d.rendered[d.cy-1+d.startoff] = []byte(title)
 			d.currentFeedUrl = url
+		}
+	}
+
+	if cached != 0 {
+		if err := d.cache.Encode(); err != nil {
+			d.SetStatusMessage(err.Error())
 		}
 	}
 }
@@ -406,6 +439,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.cy = 1
 			d.cx = 1
 			d.currentSection = ARTICLES_LIST
+			d.currentFeedUrl = url
 			d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
 		}
 	}
@@ -434,16 +468,6 @@ func (d *Display) LoadArticle(url string) {
 
 					d.rows = make([][]byte, 0)
 					d.rendered = make([][]byte, 0)
-
-					/* 				f, err := os.OpenFile("trace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-					   if err != nil {
-						   d.SetStatusMessage(err.Error())
-					   }
-					   _, err = f.Write(markdown.Bytes())
-					   if err != nil {
-						   d.SetStatusMessage(err.Error())
-					   }
-					   f.Sync() */
 
 					for _, line := range strings.Split(markdown.String(), "\n") {
 
