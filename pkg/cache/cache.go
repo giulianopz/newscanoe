@@ -31,7 +31,6 @@ func (c *Cache) Encode() error {
 		return err
 	}
 
-	// create if not exists
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return err

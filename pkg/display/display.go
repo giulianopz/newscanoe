@@ -3,9 +3,7 @@ package display
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -320,15 +318,11 @@ func (d *Display) LoadCache() error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(cachePath); err == nil {
+
+	if util.Exists(cachePath) {
 		if err := d.cache.Decode(); err != nil {
 			return err
 		}
-	} else if errors.Is(err, fs.ErrNotExist) {
-		// ignore
-		return nil
-	} else {
-		return err
 	}
 	return nil
 }
@@ -344,7 +338,6 @@ func (d *Display) LoadURLs() error {
 		panic(err)
 	}
 
-	//TODO create dir and file if they don't exist
 	file, err := os.Open(filePath)
 	if err != nil {
 		panic(err)

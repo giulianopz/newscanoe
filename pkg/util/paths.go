@@ -1,6 +1,8 @@
 package util
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -9,21 +11,45 @@ import (
 
 const (
 	urlsFileName  = "urls"
-	cacheFileName = "cache.gob"
+	cacheFileName = "feeds.gob"
 )
 
 func GetUrlsFilePath() (string, error) {
-	dirName, err := os.UserConfigDir()
+	configDirName, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dirName, app.Name, urlsFileName), nil
+
+	appConfigDirName := filepath.Join(configDirName, app.Name)
+	if !Exists(appConfigDirName) {
+		if err := os.Mkdir(appConfigDirName, 0777); err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(appConfigDirName, urlsFileName), nil
 }
 
 func GetCacheFilePath() (string, error) {
-	dirName, err := os.UserCacheDir()
+	cacheDirName, err := os.UserCacheDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dirName, app.Name, cacheFileName), nil
+
+	appCacheDirName := filepath.Join(cacheDirName, app.Name)
+	if !Exists(appCacheDirName) {
+		if err := os.Mkdir(appCacheDirName, 0777); err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(appCacheDirName, cacheFileName), nil
+}
+
+func Exists(path string) bool {
+	if _, err := os.Stat(path); err == nil {
+		return true
+	} else if errors.Is(err, fs.ErrNotExist) {
+		return false
+	} else {
+		panic(err)
+	}
 }
