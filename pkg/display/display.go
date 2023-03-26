@@ -56,8 +56,8 @@ type Display struct {
 	height int
 	width  int
 
-	msgtatus string
-	infotime time.Time
+	statusMsg string
+	infotime  time.Time
 
 	origTermios unix.Termios
 
@@ -292,7 +292,17 @@ func (d *Display) RefreshScreen() {
 }
 
 func (d *Display) SetStatusMessage(msg string) {
-	d.msgtatus = msg
+	d.statusMsg = msg
+}
+
+func (d *Display) SetTmpStatusMessage(t time.Duration, msg string) {
+	previous := d.statusMsg
+	d.SetStatusMessage(msg)
+	go func() {
+		time.AfterFunc(t, func() {
+			d.SetStatusMessage(previous)
+		})
+	}()
 }
 
 func (d *Display) SetWindowSize(fd uintptr) error {
@@ -427,6 +437,11 @@ func (d *Display) LoadArticlesList(url string) {
 	for _, cachedFeed := range d.cache.Feeds {
 		if cachedFeed.Url == url {
 
+			if len(cachedFeed.Items) == 0 {
+				d.SetTmpStatusMessage(3*time.Second, "feed not yet loaded: press r!")
+				return
+			}
+
 			d.rows = make([][]byte, 0)
 			d.rendered = make([][]byte, 0)
 
@@ -549,7 +564,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	if DebugMode {
 		tracking = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
 	}
-	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.msgtatus, tracking))
+	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.statusMsg, tracking))
 }
 
 /*
