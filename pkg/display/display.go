@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -83,7 +82,7 @@ func New(in uintptr) *Display {
 	d.SetWindowSize(in)
 
 	if err := d.LoadURLs(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	return d
@@ -135,7 +134,7 @@ func readKeyStroke(fd uintptr) byte {
 
 		_, err := unix.Read(int(fd), input)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 
 		if input[0] == '\x1b' {
@@ -430,7 +429,7 @@ func (d *Display) LoadArticle(url string) {
 					converter := md.NewConverter("", true, nil)
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
-						log.Fatal(err)
+						panic(err)
 					}
 
 					d.rows = make([][]byte, 0)

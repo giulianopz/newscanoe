@@ -2,7 +2,6 @@ package cache
 
 import (
 	"encoding/gob"
-	"log"
 	"os"
 	"time"
 
@@ -35,7 +34,7 @@ func (c *Cache) Encode() {
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer file.Close()
 
