@@ -10,7 +10,7 @@ import (
 )
 
 type Cache struct {
-	Feeds map[string]*Feed
+	Feeds []*Feed
 }
 
 type Feed struct {
@@ -24,8 +24,6 @@ type Item struct {
 	Url     string
 	PubDate time.Time
 }
-
-// TODO sort maps
 
 func (c *Cache) Encode() {
 
@@ -61,7 +59,7 @@ func (c *Cache) Decode() error {
 	}
 	defer file.Close()
 
-	var feeds map[string]*Feed
+	var feeds []*Feed
 	d := gob.NewDecoder(file)
 	if err := d.Decode(&feeds); err != nil {
 		panic(err)

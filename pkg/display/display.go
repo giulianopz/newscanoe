@@ -316,9 +316,17 @@ func (d *Display) LoadURLs() error {
 	}
 	defer file.Close()
 
+	cached := make(map[string]bool, 0)
+
 	// TODO load from gob file if it exists
 	if len(d.cache.Feeds) == 0 {
-		d.cache.Feeds = make(map[string]*cache.Feed, 0)
+		d.cache.Feeds = make([]*cache.Feed, 0)
+	} else {
+		for _, cachedFeed := range d.cache.Feeds {
+			cached[cachedFeed.Url] = true
+			d.rows = append(d.rows, []byte(cachedFeed.Url))
+			d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+		}
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -326,23 +334,16 @@ func (d *Display) LoadURLs() error {
 
 		url := scanner.Bytes()
 		if !strings.Contains(string(url), "#") {
-			if _, present := d.cache.Feeds[string(url)]; !present {
 
+			if _, present := cached[string(url)]; !present {
 				d.rows = append(d.rows, url)
 				d.rendered = append(d.rendered, url)
-				d.cache.Feeds[string(url)] = &cache.Feed{
-					Url:   string(url),
-					Title: string(url),
-				}
+				d.cache.Feeds = append(d.cache.Feeds,
+					&cache.Feed{
+						Url:   string(url),
+						Title: string(url),
+					})
 			}
-		}
-	}
-
-	if len(d.cache.Feeds) != 0 {
-		for _, f := range d.cache.Feeds {
-
-			d.rows = append(d.rows, []byte(f.Url))
-			d.rendered = append(d.rendered, []byte(f.Title))
 		}
 	}
 
@@ -369,125 +370,123 @@ func (d *Display) LoadFeed(url string) {
 	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
 	title = strings.Trim(title, " ")
 
-	cachedFeed, present := d.cache.Feeds[url]
-	if present {
-		cachedFeed.Title = title
-		cachedFeed.Items = make([]*cache.Item, 0)
+	for _, cachedFeed := range d.cache.Feeds {
+		if cachedFeed.Url == url {
+			cachedFeed.Title = title
+			cachedFeed.Items = make([]*cache.Item, 0)
 
-		for _, parsedItem := range parsedFeed.Items {
-			cachedItem := &cache.Item{
-				Title:   parsedItem.Title,
-				Url:     parsedItem.Link,
-				PubDate: *parsedItem.PublishedParsed,
+			for _, parsedItem := range parsedFeed.Items {
+				cachedItem := &cache.Item{
+					Title:   parsedItem.Title,
+					Url:     parsedItem.Link,
+					PubDate: *parsedItem.PublishedParsed,
+				}
+				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
 			}
-			cachedFeed.Items = append(cachedFeed.Items, cachedItem)
-		}
 
-		d.rendered[d.cy-1+d.startoff] = []byte(title)
-		d.currentFeedUrl = url
-	} else {
-		d.SetStatusMessage(fmt.Sprintf("url not found: %s", url))
+			d.rendered[d.cy-1+d.startoff] = []byte(title)
+			d.currentFeedUrl = url
+		}
 	}
 }
 
 func (d *Display) LoadArticlesList(url string) {
 
-	cachedFeed, present := d.cache.Feeds[url]
-	if present {
+	for _, cachedFeed := range d.cache.Feeds {
+		if cachedFeed.Url == url {
 
-		d.rows = make([][]byte, 0)
-		d.rendered = make([][]byte, 0)
+			d.rows = make([][]byte, 0)
+			d.rendered = make([][]byte, 0)
 
-		for _, item := range cachedFeed.Items {
+			for _, item := range cachedFeed.Items {
 
-			d.rows = append(d.rows, []byte(item.Url))
-			dateAndArticleName := fmt.Sprintf("%-20s %s", item.PubDate.Format("2006-January-02"), item.Title)
-			d.rendered = append(d.rendered, []byte(dateAndArticleName))
+				d.rows = append(d.rows, []byte(item.Url))
+				dateAndArticleName := fmt.Sprintf("%-20s %s", item.PubDate.Format("2006-January-02"), item.Title)
+				d.rendered = append(d.rendered, []byte(dateAndArticleName))
+			}
+			d.cy = 1
+			d.cx = 1
+			d.currentSection = ARTICLES_LIST
+			d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
 		}
-		d.cy = 1
-		d.cx = 1
-		d.currentSection = ARTICLES_LIST
-		d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
-	} else {
-		d.SetStatusMessage(fmt.Sprintf("url not found: %s", url))
 	}
 }
 
 func (d *Display) LoadArticle(url string) {
 
-	cachedFeed, present := d.cache.Feeds[d.currentFeedUrl]
-	if present {
-		for _, i := range cachedFeed.Items {
+	for _, cachedFeed := range d.cache.Feeds {
+		if cachedFeed.Url == d.currentFeedUrl {
 
-			if i.Url == url {
+			for _, i := range cachedFeed.Items {
 
-				resp, err := http.Get(i.Url)
-				if err != nil {
-					panic(err)
-				}
-				defer resp.Body.Close()
+				if i.Url == url {
 
-				converter := md.NewConverter("", true, nil)
-				markdown, err := converter.ConvertReader(resp.Body)
-				if err != nil {
-					log.Fatal(err)
-				}
+					resp, err := http.Get(i.Url)
+					if err != nil {
+						panic(err)
+					}
+					defer resp.Body.Close()
 
-				d.rows = make([][]byte, 0)
-				d.rendered = make([][]byte, 0)
+					converter := md.NewConverter("", true, nil)
+					markdown, err := converter.ConvertReader(resp.Body)
+					if err != nil {
+						log.Fatal(err)
+					}
 
-				/* 				f, err := os.OpenFile("trace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				   				if err != nil {
-				   					d.SetStatusMessage(err.Error())
-				   				}
-				   				_, err = f.Write(markdown.Bytes())
-				   				if err != nil {
-				   					d.SetStatusMessage(err.Error())
-				   				}
-				   				f.Sync() */
+					d.rows = make([][]byte, 0)
+					d.rendered = make([][]byte, 0)
 
-				for _, line := range strings.Split(markdown.String(), "\n") {
+					/* 				f, err := os.OpenFile("trace.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					   if err != nil {
+						   d.SetStatusMessage(err.Error())
+					   }
+					   _, err = f.Write(markdown.Bytes())
+					   if err != nil {
+						   d.SetStatusMessage(err.Error())
+					   }
+					   f.Sync() */
 
-					line := strings.Trim(line, " ")
-					if line != "" {
+					for _, line := range strings.Split(markdown.String(), "\n") {
 
-						if len(line) > d.width {
+						line := strings.Trim(line, " ")
+						if line != "" {
 
-							tmp := make([]byte, 0)
-							for _, r := range line {
-								if len(tmp) >= d.width {
+							if len(line) > d.width {
+
+								tmp := make([]byte, 0)
+								for _, r := range line {
+									if len(tmp) >= d.width {
+										d.rows = append(d.rows, tmp)
+										d.rendered = append(d.rendered, tmp)
+										tmp = make([]byte, 0)
+									}
+									tmp = append(tmp, byte(r))
+								}
+								if len(tmp) != 0 {
 									d.rows = append(d.rows, tmp)
 									d.rendered = append(d.rendered, tmp)
-									tmp = make([]byte, 0)
 								}
-								tmp = append(tmp, byte(r))
-							}
-							if len(tmp) != 0 {
-								d.rows = append(d.rows, tmp)
-								d.rendered = append(d.rendered, tmp)
-							}
 
-						} else {
-							d.rows = append(d.rows, []byte(line))
-							d.rendered = append(d.rendered, []byte(line))
+							} else {
+								d.rows = append(d.rows, []byte(line))
+								d.rendered = append(d.rendered, []byte(line))
+							}
 						}
 					}
 				}
-			}
 
-			d.cy = 1
-			d.cx = 1
-			d.currentArticleUrl = url
-			d.currentSection = ARTICLE_TEXT
+				d.cy = 1
+				d.cx = 1
+				d.currentArticleUrl = url
+				d.currentSection = ARTICLE_TEXT
 
-			var browserHelp string
-			if !headless() {
-				browserHelp = "Ctrl-o/o = open with browser |"
+				var browserHelp string
+				if !headless() {
+					browserHelp = "Ctrl-o/o = open with browser |"
+				}
+				d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 			}
-			d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 		}
-	} else {
-		d.SetStatusMessage(fmt.Sprintf("url not found: %s", d.currentArticleUrl))
 	}
 }
 
