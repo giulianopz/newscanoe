@@ -44,13 +44,13 @@ const (
 )
 
 type Display struct {
-	// cursor's position within terminal coordinates
+	// cursor's position within terminal window
 	cx int
 	cy int
-	// limits of rendered window
+	// offsets of rendered text window
 	startoff int
 	endoff   int
-	// window size
+	// size of terminal window
 	height int
 	width  int
 
