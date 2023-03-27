@@ -48,7 +48,7 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				d.SetStatusMessage(fmt.Sprintf("recover: %v", r))
+				d.SetBottomMessage(fmt.Sprintf("recover: %v", r))
 			}
 		}()
 

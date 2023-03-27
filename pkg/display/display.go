@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/giulianopz/newscanoe/pkg/cache"
@@ -54,8 +55,9 @@ type Display struct {
 	height int
 	width  int
 
-	statusMsg string
-	infotime  time.Time
+	bottomBarMsg string
+
+	//infotime  time.Time
 
 	origTermios unix.Termios
 
@@ -63,8 +65,6 @@ type Display struct {
 	rendered [][]byte
 	cache    cache.Cache
 
-	/* 	totalsRows     int
-	   	currentRow     int */
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
@@ -289,16 +289,16 @@ func (d *Display) RefreshScreen() {
 	fmt.Fprint(os.Stdout, buf)
 }
 
-func (d *Display) SetStatusMessage(msg string) {
-	d.statusMsg = msg
+func (d *Display) SetBottomMessage(msg string) {
+	d.bottomBarMsg = msg
 }
 
-func (d *Display) SetTmpStatusMessage(t time.Duration, msg string) {
-	previous := d.statusMsg
-	d.SetStatusMessage(msg)
+func (d *Display) SetTmpBottomMessage(t time.Duration, msg string) {
+	previous := d.bottomBarMsg
+	d.SetBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.SetStatusMessage(previous)
+			d.SetBottomMessage(previous)
 		})
 	}()
 }
@@ -378,7 +378,7 @@ func (d *Display) LoadURLs() error {
 	d.cx = 1
 	d.currentSection = URLS_LIST
 	// Ctrl-R/R = reload all
-	d.SetStatusMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
+	d.SetBottomMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
 
 	return nil
 }
@@ -420,7 +420,7 @@ func (d *Display) LoadFeed(url string) {
 
 	if cached != 0 {
 		if err := d.cache.Encode(); err != nil {
-			d.SetStatusMessage(err.Error())
+			d.SetBottomMessage(err.Error())
 		}
 	}
 }
@@ -431,7 +431,7 @@ func (d *Display) LoadArticlesList(url string) {
 		if cachedFeed.Url == url {
 
 			if len(cachedFeed.Items) == 0 {
-				d.SetTmpStatusMessage(3*time.Second, "feed not yet loaded: press r!")
+				d.SetTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
 				return
 			}
 
@@ -448,7 +448,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.cx = 1
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
-			d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
+			d.SetBottomMessage("HELP: Enter = view article | Backspace = go back")
 		}
 	}
 }
@@ -515,7 +515,7 @@ func (d *Display) LoadArticle(url string) {
 				if !headless() {
 					browserHelp = "Ctrl-o/o = open with browser |"
 				}
-				d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
+				d.SetBottomMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 			}
 		}
 	}
@@ -537,7 +537,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 				buf.WriteString(string(d.rendered[i][j]))
 			} else {
 				// TODO
-				d.SetStatusMessage("char is beyond win width")
+				d.SetBottomMessage("char is beyond win width")
 			}
 		}
 		buf.WriteString("\r\n")
@@ -553,11 +553,14 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	var tracking string
+	var bottomRightCorner string
 	if DebugMode {
-		tracking = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+		bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+	} else {
+		bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	}
-	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.statusMsg, tracking))
+	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, bottomRightCorner))
 }
 
 /*
@@ -572,9 +575,9 @@ func (d *Display) openWithBrowser(url string) {
 		if err != nil {
 			switch e := err.(type) {
 			case *exec.Error:
-				d.SetStatusMessage(fmt.Sprintf("failed executing: %v", err))
+				d.SetBottomMessage(fmt.Sprintf("failed executing: %v", err))
 			case *exec.ExitError:
-				d.SetStatusMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
+				d.SetBottomMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
 			default:
 				panic(err)
 			}
