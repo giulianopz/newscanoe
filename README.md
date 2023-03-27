@@ -19,7 +19,7 @@ Supported keybindings:
 
 > Warn: the project is still a WIP 🚧
 
-[![asciicast](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ.svg)](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ)
+[![asciicast](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5.svg)](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5)
 
 ### Build
 
