@@ -14,6 +14,15 @@ Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$
 
 [![asciicast](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ.svg)](https://asciinema.org/a/238FVtsUqBAgusEY76RYEiWAQ)
 
+### Build
+
+Build the app:
+```
+go build -o newscanoe cmd/newscanoe/main.go
+# or with task
+task build
+```
+
 ---
 
 ### Credits
