@@ -284,7 +284,7 @@ func (d *Display) RefreshScreen() {
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
 	// show cursor
-	buf.WriteString("\x1b[?25h")
+	//buf.WriteString("\x1b[?25h")
 
 	fmt.Fprint(os.Stdout, buf)
 }
@@ -532,6 +532,13 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
+		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+			// inverted colors attribute
+			buf.WriteString("\x1b[7m")
+			// white
+			buf.WriteString("\x1b[37m")
+		}
+
 		for j := 0; j < len(d.rendered[i]); j++ {
 			if j < (d.width) {
 				buf.WriteString(string(d.rendered[i][j]))
@@ -540,6 +547,14 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 				d.SetBottomMessage("char is beyond win width")
 			}
 		}
+
+		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+			// attributes off
+			buf.WriteString("\x1b[m")
+			// default color
+			buf.WriteString("\x1b[39m")
+		}
+
 		buf.WriteString("\r\n")
 		printed++
 	}
@@ -562,8 +577,10 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 
 	buf.WriteString("\x1b[7m")
+	buf.WriteString("\x1b[37m")
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, bottomRightCorner))
 	buf.WriteString("\x1b[m")
+	buf.WriteString("\x1b[39m")
 }
 
 /*
