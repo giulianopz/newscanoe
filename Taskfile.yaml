@@ -4,3 +4,6 @@ tasks:
   build:
     cmds:
       - go build -o newscanoe cmd/newscanoe/main.go
+  install:
+    cmds:
+      - cp ./newscanoe /usr/local/bin

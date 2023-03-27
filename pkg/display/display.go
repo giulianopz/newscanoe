@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/giulianopz/newscanoe/pkg/cache"
@@ -40,22 +41,23 @@ const (
 	ARTICLES_LIST
 	ARTICLE_TEXT
 	//
-	bottomPadding int = 3
+	BOTTOM_PADDING = 3
 )
 
 type Display struct {
-	// cursor's position within terminal coordinates
+	// cursor's position within terminal window
 	cx int
 	cy int
-	// limits of rendered window
+	// offsets of rendered text window
 	startoff int
 	endoff   int
-	// window size
+	// size of terminal window
 	height int
 	width  int
 
-	statusMsg string
-	infotime  time.Time
+	bottomBarMsg string
+
+	//infotime  time.Time
 
 	origTermios unix.Termios
 
@@ -63,8 +65,6 @@ type Display struct {
 	rendered [][]byte
 	cache    cache.Cache
 
-	/* 	totalsRows     int
-	   	currentRow     int */
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
@@ -108,12 +108,12 @@ func (d *Display) MoveCursor(dir byte) {
 	case ARROW_RIGHT:
 		if (d.cx - 1) < (len(d.rendered[d.cy-1+d.startoff]) - 1) {
 			d.cx++
-		} else if d.cy >= 1 && d.cy < (d.height-bottomPadding) {
+		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) {
 			d.cy++
 			d.cx = 1
 		}
 	case ARROW_DOWN:
-		if d.cy < (d.height - bottomPadding) {
+		if d.cy < (d.height - BOTTOM_PADDING) {
 			if (d.cx - 1) <= (len(d.rendered[d.cy+d.startoff]) - 1) {
 				d.cy++
 			}
@@ -284,21 +284,21 @@ func (d *Display) RefreshScreen() {
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
 	// show cursor
-	buf.WriteString("\x1b[?25h")
+	//buf.WriteString("\x1b[?25h")
 
 	fmt.Fprint(os.Stdout, buf)
 }
 
-func (d *Display) SetStatusMessage(msg string) {
-	d.statusMsg = msg
+func (d *Display) SetBottomMessage(msg string) {
+	d.bottomBarMsg = msg
 }
 
-func (d *Display) SetTmpStatusMessage(t time.Duration, msg string) {
-	previous := d.statusMsg
-	d.SetStatusMessage(msg)
+func (d *Display) SetTmpBottomMessage(t time.Duration, msg string) {
+	previous := d.bottomBarMsg
+	d.SetBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.SetStatusMessage(previous)
+			d.SetBottomMessage(previous)
 		})
 	}()
 }
@@ -378,7 +378,7 @@ func (d *Display) LoadURLs() error {
 	d.cx = 1
 	d.currentSection = URLS_LIST
 	// Ctrl-R/R = reload all
-	d.SetStatusMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
+	d.SetBottomMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
 
 	return nil
 }
@@ -420,7 +420,7 @@ func (d *Display) LoadFeed(url string) {
 
 	if cached != 0 {
 		if err := d.cache.Encode(); err != nil {
-			d.SetStatusMessage(err.Error())
+			d.SetBottomMessage(err.Error())
 		}
 	}
 }
@@ -431,7 +431,7 @@ func (d *Display) LoadArticlesList(url string) {
 		if cachedFeed.Url == url {
 
 			if len(cachedFeed.Items) == 0 {
-				d.SetTmpStatusMessage(3*time.Second, "feed not yet loaded: press r!")
+				d.SetTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
 				return
 			}
 
@@ -448,7 +448,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.cx = 1
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
-			d.SetStatusMessage("HELP: Enter = view article | Backspace = go back")
+			d.SetBottomMessage("HELP: Enter = view article | Backspace = go back")
 		}
 	}
 }
@@ -515,7 +515,7 @@ func (d *Display) LoadArticle(url string) {
 				if !headless() {
 					browserHelp = "Ctrl-o/o = open with browser |"
 				}
-				d.SetStatusMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
+				d.SetBottomMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
 			}
 		}
 	}
@@ -524,27 +524,42 @@ func (d *Display) LoadArticle(url string) {
 func (d *Display) Draw(buf *bytes.Buffer) {
 
 	d.endoff = (len(d.rendered) - 1)
-	if d.endoff > (d.height - bottomPadding) {
-		d.endoff = d.height - bottomPadding - 1
+	if d.endoff > (d.height - BOTTOM_PADDING) {
+		d.endoff = d.height - BOTTOM_PADDING - 1
 	}
 	d.endoff += d.startoff
 
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
+		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+			// inverted colors attribute
+			buf.WriteString("\x1b[7m")
+			// white
+			buf.WriteString("\x1b[37m")
+		}
+
 		for j := 0; j < len(d.rendered[i]); j++ {
 			if j < (d.width) {
 				buf.WriteString(string(d.rendered[i][j]))
 			} else {
 				// TODO
-				d.SetStatusMessage("char is beyond win width")
+				d.SetBottomMessage("char is beyond win width")
 			}
 		}
+
+		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+			// attributes off
+			buf.WriteString("\x1b[m")
+			// default color
+			buf.WriteString("\x1b[39m")
+		}
+
 		buf.WriteString("\r\n")
 		printed++
 	}
 
-	for ; printed < d.height-bottomPadding; printed++ {
+	for ; printed < d.height-BOTTOM_PADDING; printed++ {
 		buf.WriteString("\r\n")
 	}
 
@@ -553,11 +568,19 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	var tracking string
+	var bottomRightCorner string
 	if DebugMode {
-		tracking = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+		bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+	} else {
+		bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	}
-	buf.WriteString(fmt.Sprintf("%s\t%s\r\n", d.statusMsg, tracking))
+	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+
+	buf.WriteString("\x1b[7m")
+	buf.WriteString("\x1b[37m")
+	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, bottomRightCorner))
+	buf.WriteString("\x1b[m")
+	buf.WriteString("\x1b[39m")
 }
 
 /*
@@ -572,9 +595,9 @@ func (d *Display) openWithBrowser(url string) {
 		if err != nil {
 			switch e := err.(type) {
 			case *exec.Error:
-				d.SetStatusMessage(fmt.Sprintf("failed executing: %v", err))
+				d.SetBottomMessage(fmt.Sprintf("failed executing: %v", err))
 			case *exec.ExitError:
-				d.SetStatusMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
+				d.SetBottomMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
 			default:
 				panic(err)
 			}
