@@ -560,7 +560,10 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 		bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	}
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+
+	buf.WriteString("\x1b[7m")
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, bottomRightCorner))
+	buf.WriteString("\x1b[m")
 }
 
 /*
