@@ -40,7 +40,7 @@ const (
 	ARTICLES_LIST
 	ARTICLE_TEXT
 	//
-	bottomPadding int = 3
+	BOTTOM_PADDING = 3
 )
 
 type Display struct {
@@ -108,12 +108,12 @@ func (d *Display) MoveCursor(dir byte) {
 	case ARROW_RIGHT:
 		if (d.cx - 1) < (len(d.rendered[d.cy-1+d.startoff]) - 1) {
 			d.cx++
-		} else if d.cy >= 1 && d.cy < (d.height-bottomPadding) {
+		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) {
 			d.cy++
 			d.cx = 1
 		}
 	case ARROW_DOWN:
-		if d.cy < (d.height - bottomPadding) {
+		if d.cy < (d.height - BOTTOM_PADDING) {
 			if (d.cx - 1) <= (len(d.rendered[d.cy+d.startoff]) - 1) {
 				d.cy++
 			}
@@ -524,8 +524,8 @@ func (d *Display) LoadArticle(url string) {
 func (d *Display) Draw(buf *bytes.Buffer) {
 
 	d.endoff = (len(d.rendered) - 1)
-	if d.endoff > (d.height - bottomPadding) {
-		d.endoff = d.height - bottomPadding - 1
+	if d.endoff > (d.height - BOTTOM_PADDING) {
+		d.endoff = d.height - BOTTOM_PADDING - 1
 	}
 	d.endoff += d.startoff
 
@@ -544,7 +544,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 		printed++
 	}
 
-	for ; printed < d.height-bottomPadding; printed++ {
+	for ; printed < d.height-BOTTOM_PADDING; printed++ {
 		buf.WriteString("\r\n")
 	}
 
