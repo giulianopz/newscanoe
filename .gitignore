@@ -24,3 +24,5 @@ go.work
 *.dump
 
 /newscanoe
+
+dist/
