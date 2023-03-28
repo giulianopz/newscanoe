@@ -1,13 +1,17 @@
 ## Newscanoe
 
 Newscanoe is a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux terminal emulators
+- only for Linux terminal emulators (at the moment, at least)
 - written in Go but rigorously nonglamorous
-- meant to be lighter and easier to build from source or to distribute (in the future) in a distribution-independent package format such as Snap, Flatpak, or AppImage.
+- meant to be lighter and easier to build from source or to distribute (in the future) as a traditional distribution-dependent (e.g. rpm/deb) or independent (e.g. Snap, Flatpak, or AppImage) package.
+
+## Configuration
 
 The only prerequisite is a file containing only urls of RSS/Atom feeds line-by-line (see the [urls sample file](./assets/urls)) located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
+
+## Usage
 
 Supported keybindings:
 - `r`, load/reload a feed
@@ -17,18 +21,22 @@ Supported keybindings:
 - `o`, open an article with the default browser for the user's desktop environment
 - `^`, `v`, `<`, `>`, move the cursor across the text
 
-> Warn: the project is still a WIP 🚧
+### Install
+
+> Warning: the project is still a WIP 🚧
+
+Build from source:
+```
+git clone https://github.com/giulianopz/newscanoe.git
+go build -o newscanoe cmd/newscanoe/main.go && cp ./newscanoe /usr/local/bin
+# or with task
+task build && task install
+newscanoe
+```
+
+Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
 
 [![asciicast](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5.svg)](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5)
-
-### Build
-
-Build the app:
-```
-go build -o newscanoe cmd/newscanoe/main.go
-# or with task
-task build
-```
 
 ---
 
