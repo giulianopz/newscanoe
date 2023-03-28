@@ -3,7 +3,9 @@ name: goreleaser-release
 on:
   push:
     tags:
-      - "v*" 
+      - "v*"
+    branches:
+      - 'main'
 
 jobs:
   goreleaser:
