@@ -19,7 +19,6 @@ builds:
 
 archives:
   - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -27,10 +26,6 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }} 
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    # format_overrides:
-    # - goos: windows
-    #   format: zip
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -42,8 +37,3 @@ changelog:
       - '^docs:'
       - '^test:'
       - '^assets:'
-
-# The lines beneath this are called `modelines`. See `:help modeline`
-# Feel free to remove those if you don't want/use them.
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
