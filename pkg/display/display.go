@@ -487,6 +487,16 @@ func (d *Display) LoadArticleText(url string) {
 					}
 					defer resp.Body.Close()
 
+					//TODO fix replacement chars
+					/*
+								 		b := bytes.Buffer{}
+								   		r := io.TeeReader(resp.Body, &b)
+						   				scanner := bufio.NewScanner(r)
+								   		for scanner.Scan() {
+								   			log.Default().Println(scanner.Text())
+								   		}
+					*/
+
 					converter := md.NewConverter("", true, nil)
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
