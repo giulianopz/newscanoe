@@ -9,6 +9,7 @@ import (
 )
 
 type Cache struct {
+	//TODO sync.Mutex
 	Feeds []*Feed
 }
 

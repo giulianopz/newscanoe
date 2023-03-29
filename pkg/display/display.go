@@ -97,6 +97,12 @@ func (d *Display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
 
+func (d *Display) resetCoordinates() {
+	d.cy = 1
+	d.cx = 1
+	d.startoff = 0
+}
+
 func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
@@ -233,7 +239,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ctrlPlus('r'), 'r':
 		if d.currentSection == URLS_LIST {
 			d.LoadFeed(string(d.rows[d.currentRow()]))
-			d.RefreshScreen()
+			//d.RefreshScreen()
 		}
 
 	case ctrlPlus('o'), 'o':
@@ -253,7 +259,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			case URLS_LIST:
 				d.LoadArticlesList(string(d.rows[d.currentRow()]))
 			case ARTICLES_LIST:
-				d.LoadArticle(string(d.rows[d.currentRow()]))
+				d.LoadArticleText(string(d.rows[d.currentRow()]))
 			}
 		}
 
@@ -431,6 +437,7 @@ func (d *Display) LoadFeed(url string) {
 
 func (d *Display) LoadArticlesList(url string) {
 
+	log.Default().Printf("loading articles for url: %s", url)
 	for _, cachedFeed := range d.cache.Feeds {
 		if cachedFeed.Url == url {
 
@@ -448,16 +455,23 @@ func (d *Display) LoadArticlesList(url string) {
 				dateAndArticleName := fmt.Sprintf("%-20s %s", item.PubDate.Format("2006-January-02"), item.Title)
 				d.rendered = append(d.rendered, []byte(dateAndArticleName))
 			}
-			d.cy = 1
-			d.cx = 1
+
+			for i, r := range d.rows {
+				log.Printf("row at index %d: %s\n", i, string(r))
+				log.Printf("rendered as: %s\n", string(d.rendered[i]))
+			}
+
+			d.resetCoordinates()
+
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
+
 			d.SetBottomMessage("HELP: Enter = view article | Backspace = go back")
 		}
 	}
 }
 
-func (d *Display) LoadArticle(url string) {
+func (d *Display) LoadArticleText(url string) {
 
 	for _, cachedFeed := range d.cache.Feeds {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -510,8 +524,8 @@ func (d *Display) LoadArticle(url string) {
 					}
 				}
 
-				d.cy = 1
-				d.cx = 1
+				d.resetCoordinates()
+
 				d.currentArticleUrl = url
 				d.currentSection = ARTICLE_TEXT
 
@@ -527,12 +541,18 @@ func (d *Display) LoadArticle(url string) {
 
 func (d *Display) Draw(buf *bytes.Buffer) {
 
+	log.Default().Printf("len of rendered: %d", len(d.rendered))
 	d.endoff = (len(d.rendered) - 1)
+	log.Default().Printf("before: from %d to %d\n", d.startoff, d.endoff)
 	if d.endoff > (d.height - BOTTOM_PADDING) {
 		d.endoff = d.height - BOTTOM_PADDING - 1
 	}
-	d.endoff += d.startoff
+	if d.endoff+d.startoff <= (len(d.rendered) - 1) {
+		d.endoff += d.startoff
+	}
+	log.Default().Printf("after: from %d to %d\n", d.startoff, d.endoff)
 
+	log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 

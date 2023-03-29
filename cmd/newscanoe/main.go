@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/giulianopz/newscanoe/pkg/display"
@@ -48,7 +49,7 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				d.SetBottomMessage(fmt.Sprintf("recover: %v", r))
+				log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
 			}
 		}()
 
