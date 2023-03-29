@@ -244,7 +244,11 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ctrlPlus('r'), 'r':
 		if d.currentSection == URLS_LIST {
 			d.LoadFeed(string(d.rows[d.currentRow()]))
-			//d.RefreshScreen()
+		}
+
+	case ctrlPlus('R'), 'R':
+		if d.currentSection == URLS_LIST {
+			d.LoadAllFeeds()
 		}
 
 	case ctrlPlus('o'), 'o':
@@ -385,8 +389,8 @@ func (d *Display) LoadURLs() error {
 	d.cy = 1
 	d.cx = 1
 	d.currentSection = URLS_LIST
-	// Ctrl-R/R = reload all
-	d.SetBottomMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload")
+
+	d.SetBottomMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload | Ctrl-R/R = reload all")
 
 	return nil
 }
@@ -409,6 +413,45 @@ func (d *Display) LoadFeed(url string) {
 
 	d.rendered[d.currentRow()] = []byte(title)
 	d.currentFeedUrl = url
+
+	go func() {
+		if err := d.cache.Encode(); err != nil {
+			log.Default().Println(err.Error())
+		}
+	}()
+}
+
+func (d *Display) LoadAllFeeds() {
+
+	origMsg := d.bottomBarMsg
+
+	for id := range d.rows {
+
+		url := string(d.rows[id])
+
+		log.Default().Printf("loading feed #%d from url %s\n", id, url)
+
+		fp := gofeed.NewParser()
+		parsedFeed, err := fp.ParseURL(url)
+		if err != nil {
+			log.Default().Println(err)
+		}
+
+		title := strings.TrimSpace(parsedFeed.Title)
+
+		if err := d.cache.AddFeed(parsedFeed, url); err != nil {
+			log.Default().Println(err)
+			d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
+			return
+		}
+
+		d.rendered[id] = []byte(title)
+
+		d.SetBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.rows)))
+		d.RefreshScreen()
+	}
+
+	d.SetBottomMessage(origMsg)
 
 	go func() {
 		if err := d.cache.Encode(); err != nil {
