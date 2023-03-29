@@ -103,6 +103,11 @@ func (d *Display) resetCoordinates() {
 	d.startoff = 0
 }
 
+func (d *Display) resetRows() {
+	d.rows = make([][]byte, 0)
+	d.rendered = make([][]byte, 0)
+}
+
 func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
@@ -342,8 +347,7 @@ func (d *Display) LoadCache() error {
 
 func (d *Display) LoadURLs() error {
 
-	d.rows = make([][]byte, 0)
-	d.rendered = make([][]byte, 0)
+	d.resetRows()
 
 	filePath, err := util.GetUrlsFilePath()
 	if err != nil {
@@ -447,8 +451,7 @@ func (d *Display) LoadArticlesList(url string) {
 				return
 			}
 
-			d.rows = make([][]byte, 0)
-			d.rendered = make([][]byte, 0)
+			d.resetRows()
 
 			for _, item := range cachedFeed.Items {
 
@@ -503,8 +506,7 @@ func (d *Display) LoadArticleText(url string) {
 						log.Default().Println(err)
 					}
 
-					d.rows = make([][]byte, 0)
-					d.rendered = make([][]byte, 0)
+					d.resetRows()
 
 					for _, line := range strings.Split(markdown.String(), "\n") {
 
