@@ -402,8 +402,8 @@ func (d *Display) LoadFeed(url string) {
 	title := strings.TrimSpace(parsedFeed.Title)
 
 	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
-		log.Default().Println(fmt.Errorf("cannot load feed from url: %w", err))
-		d.SetBottomMessage(fmt.Sprintf("cannot load feed from url: %s", url))
+		log.Default().Println(err)
+		d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 		return
 	}
 
@@ -457,6 +457,8 @@ func (d *Display) LoadArticleText(url string) {
 					resp, err := http.Get(i.Url)
 					if err != nil {
 						log.Default().Println(err)
+						d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
+						return
 					}
 					defer resp.Body.Close()
 
@@ -464,6 +466,8 @@ func (d *Display) LoadArticleText(url string) {
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
 						log.Default().Println(err)
+						d.SetTmpBottomMessage(3*time.Second, "cannot parse article text!")
+						return
 					}
 
 					d.resetRows()
@@ -472,14 +476,13 @@ func (d *Display) LoadArticleText(url string) {
 					for scanner.Scan() {
 
 						line := strings.TrimSpace(scanner.Text())
-
 						if line != "" {
 
 							if len(line) > d.width {
 
 								for i := 0; i < len(line); i += d.width {
-									end := i + d.width
 
+									end := i + d.width
 									if end > len(line) {
 										end = len(line)
 									}
