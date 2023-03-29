@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -392,8 +391,6 @@ func (d *Display) LoadURLs() error {
 	return nil
 }
 
-var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 \.\-]+`)
-
 func (d *Display) LoadFeed(url string) {
 
 	fp := gofeed.NewParser()
@@ -402,35 +399,23 @@ func (d *Display) LoadFeed(url string) {
 		log.Default().Println(err)
 	}
 
-	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
-	title = strings.Trim(title, " ")
+	title := strings.TrimSpace(parsedFeed.Title)
 
-	var cached int
-	for _, cachedFeed := range d.cache.GetFeeds() {
-		if cachedFeed.Url == url {
-			cachedFeed.Title = title
-			cachedFeed.Items = make([]*cache.Item, 0)
-
-			for _, parsedItem := range parsedFeed.Items {
-				cachedItem := &cache.Item{
-					Title:   parsedItem.Title,
-					Url:     parsedItem.Link,
-					PubDate: *parsedItem.PublishedParsed,
-				}
-				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
-				cached++
-			}
-
-			d.rendered[d.currentRow()] = []byte(title)
-			d.currentFeedUrl = url
-		}
+	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
+		log.Default().Println(fmt.Errorf("cannot load feed from url: %w", err))
+		d.SetBottomMessage(fmt.Sprintf("cannot load feed from url: %s", url))
+		return
 	}
 
-	if cached != 0 {
+	d.rendered[d.currentRow()] = []byte(title)
+	d.currentFeedUrl = url
+
+	go func() {
 		if err := d.cache.Encode(); err != nil {
-			d.SetBottomMessage(err.Error())
+			log.Default().Println(err.Error())
 		}
-	}
+	}()
+
 }
 
 func (d *Display) LoadArticlesList(url string) {

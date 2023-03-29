@@ -26,6 +26,8 @@ func main() {
 	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
 	flag.Parse()
 
+	//TODO discard logs if debug mode is disabled
+
 	origTermios := termios.EnableRawMode(os.Stdin.Fd())
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 

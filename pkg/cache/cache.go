@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,6 +42,7 @@ func NewFeed(title, url string) *Feed {
 	return &Feed{
 		Title: title,
 		Url:   url,
+		Items: make([]*Item, 0),
 	}
 }
 
@@ -113,13 +115,12 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	title := util.RenderTitle(parsedFeed.Title)
+	title := strings.TrimSpace(parsedFeed.Title)
 
 	for _, cachedFeed := range c.feeds {
 		if cachedFeed.Url == url {
 
 			cachedFeed.Title = title
-			cachedFeed.Items = make([]*Item, 0)
 			for _, parsedItem := range parsedFeed.Items {
 				cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
 				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
