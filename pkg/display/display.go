@@ -92,6 +92,10 @@ func New(in uintptr) *Display {
 	return d
 }
 
+func (d *Display) currentRow() int {
+	return d.cy - 1 + d.startoff
+}
+
 func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
@@ -103,10 +107,10 @@ func (d *Display) MoveCursor(dir byte) {
 			d.cx--
 		} else if d.cy > 1 {
 			d.cy--
-			d.cx = len(d.rendered[d.cy-1+d.startoff])
+			d.cx = len(d.rendered[d.currentRow()])
 		}
 	case ARROW_RIGHT:
-		if (d.cx - 1) < (len(d.rendered[d.cy-1+d.startoff]) - 1) {
+		if (d.cx - 1) < (len(d.rendered[d.currentRow()]) - 1) {
 			d.cx++
 		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) {
 			d.cy++
@@ -226,7 +230,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ctrlPlus('r'), 'r':
 		if d.currentSection == URLS_LIST {
-			d.LoadFeed(string(d.rows[d.cy-1+d.startoff]))
+			d.LoadFeed(string(d.rows[d.currentRow()]))
 			d.RefreshScreen()
 		}
 
@@ -245,9 +249,9 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case URLS_LIST:
-				d.LoadArticlesList(string(d.rows[d.cy-1+d.startoff]))
+				d.LoadArticlesList(string(d.rows[d.currentRow()]))
 			case ARTICLES_LIST:
-				d.LoadArticle(string(d.rows[d.cy-1+d.startoff]))
+				d.LoadArticle(string(d.rows[d.currentRow()]))
 			}
 		}
 
@@ -413,7 +417,7 @@ func (d *Display) LoadFeed(url string) {
 				cached++
 			}
 
-			d.rendered[d.cy-1+d.startoff] = []byte(title)
+			d.rendered[d.currentRow()] = []byte(title)
 			d.currentFeedUrl = url
 		}
 	}
@@ -532,7 +536,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
-		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			// inverted colors attribute
 			buf.WriteString("\x1b[7m")
 			// white
@@ -548,7 +552,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 			}
 		}
 
-		if i == d.cy-1 && d.currentSection != ARTICLE_TEXT {
+		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			// attributes off
 			buf.WriteString("\x1b[m")
 			// default color
