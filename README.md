@@ -14,7 +14,8 @@ Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$
 ## Usage
 
 Supported keybindings:
-- `r`, load/reload a feed
+- `r`, load/reload the currently selected feed
+- `R`, load/reload all the feeds
 - `q`, quit the app
 - `BACKSPACE`, go back to previous section
 - `ENTER`, open a feed or an article
