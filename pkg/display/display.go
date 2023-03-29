@@ -544,7 +544,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	log.Default().Printf("len of rendered: %d", len(d.rendered))
 	d.endoff = (len(d.rendered) - 1)
 	log.Default().Printf("before: from %d to %d\n", d.startoff, d.endoff)
-	if d.endoff > (d.height - BOTTOM_PADDING) {
+	if d.endoff >= (d.height - BOTTOM_PADDING) {
 		d.endoff = d.height - BOTTOM_PADDING - 1
 	}
 	if d.endoff+d.startoff <= (len(d.rendered) - 1) {
@@ -563,12 +563,15 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 			buf.WriteString("\x1b[37m")
 		}
 
-		for j := 0; j < len(d.rendered[i]); j++ {
+		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
+		// if so, the "LANG" env variable should contain "UTF"
+
+		for j, c := range string(d.rendered[i]) {
 			if j < (d.width) {
-				buf.WriteString(string(d.rendered[i][j]))
+				buf.WriteRune(c)
 			} else {
 				// TODO
-				d.SetBottomMessage("char is beyond win width")
+				log.Default().Println("char is beyond win width")
 			}
 		}
 
