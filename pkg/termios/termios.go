@@ -1,7 +1,7 @@
 package termios
 
 import (
-	"fmt"
+	"log"
 
 	"golang.org/x/sys/unix"
 )
@@ -37,14 +37,14 @@ func tcsetattr(fd, action uintptr, t *unix.Termios) error {
 
 func DisableRawMode(fd uintptr, orig_termios unix.Termios) {
 	if err := tcsetattr(fd, TCSAFLUSH, &orig_termios); err != nil {
-		panic(fmt.Errorf("cannot set attr: %w", err))
+		log.Panicf("cannot set attr: %v", err)
 	}
 }
 
 func EnableRawMode(fd uintptr) unix.Termios {
 	termios, err := tcgetattr(fd)
 	if err != nil {
-		panic(fmt.Errorf("cannot get attr: %w", err))
+		log.Panicf("cannot get attr: %v", err)
 	}
 
 	var origTermios unix.Termios = *termios
@@ -57,7 +57,7 @@ func EnableRawMode(fd uintptr) unix.Termios {
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
 	if err := tcsetattr(fd, TCSAFLUSH, termios); err != nil {
-		panic(fmt.Errorf("cannot set attr: %w", err))
+		log.Panicf("cannot set attr: %v", err)
 	}
 	return origTermios
 }

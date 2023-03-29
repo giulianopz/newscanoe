@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -50,6 +51,7 @@ func Exists(path string) bool {
 	} else if errors.Is(err, fs.ErrNotExist) {
 		return false
 	} else {
-		panic(err)
+		log.Panicln(err)
+		return false
 	}
 }

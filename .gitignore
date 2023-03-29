@@ -20,6 +20,7 @@ go.work
 # IDE
 .vscode/
 
+log
 *.log
 *.dump
 

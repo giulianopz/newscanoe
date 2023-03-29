@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -82,11 +83,11 @@ func New(in uintptr) *Display {
 	d.SetWindowSize(in)
 
 	if err := d.LoadCache(); err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 
 	if err := d.LoadURLs(); err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 
 	return d
@@ -142,7 +143,8 @@ func readKeyStroke(fd uintptr) byte {
 
 		_, err := unix.Read(int(fd), input)
 		if err != nil {
-			panic(err)
+			//TODO use new slog
+			log.Default().Println(err)
 		}
 
 		if input[0] == '\x1b' {
@@ -338,13 +340,12 @@ func (d *Display) LoadURLs() error {
 
 	filePath, err := util.GetUrlsFilePath()
 	if err != nil {
-		// TODO
-		panic(err)
+		log.Panicln(err)
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 	defer file.Close()
 
@@ -394,8 +395,7 @@ func (d *Display) LoadFeed(url string) {
 	fp := gofeed.NewParser()
 	parsedFeed, err := fp.ParseURL(url)
 	if err != nil {
-		// TODO
-		panic(err)
+		log.Default().Println(err)
 	}
 
 	title := nonAlphaNumericRegex.ReplaceAllString(parsedFeed.Title, "")
@@ -468,14 +468,14 @@ func (d *Display) LoadArticle(url string) {
 
 					resp, err := http.Get(i.Url)
 					if err != nil {
-						panic(err)
+						log.Default().Println(err)
 					}
 					defer resp.Body.Close()
 
 					converter := md.NewConverter("", true, nil)
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
-						panic(err)
+						log.Default().Println(err)
 					}
 
 					d.rows = make([][]byte, 0)
