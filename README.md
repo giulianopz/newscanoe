@@ -37,7 +37,7 @@ newscanoe
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
 
-[![asciicast](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5.svg)](https://asciinema.org/a/HHpxc4qJBpuYpPQ7y4wkp4LK5)
+[![asciicast](https://asciinema.org/a/YyzLpxYUswPqeaeoRYVnAP9y1.svg)](https://asciinema.org/a/YyzLpxYUswPqeaeoRYVnAP9y1)
 
 ---
 
