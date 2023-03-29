@@ -222,6 +222,7 @@ func readKeyStroke(fd uintptr) byte {
 }
 
 func (d *Display) Quit(quitC chan bool) {
+	fmt.Fprint(os.Stdout, "\x1b[?25h")
 	fmt.Fprint(os.Stdout, "\x1b[2J")
 	fmt.Fprint(os.Stdout, "\x1b[H")
 	quitC <- true
