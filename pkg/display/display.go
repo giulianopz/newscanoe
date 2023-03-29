@@ -64,7 +64,7 @@ type Display struct {
 
 	rows     [][]byte
 	rendered [][]byte
-	cache    cache.Cache
+	cache    *cache.Cache
 
 	currentSection    int
 	currentArticleUrl string
@@ -77,7 +77,7 @@ func New(in uintptr) *Display {
 		cy:       1,
 		startoff: 0,
 		endoff:   0,
-		cache:    cache.Cache{},
+		cache:    cache.NewCache(),
 	}
 
 	d.SetWindowSize(in)
@@ -362,14 +362,10 @@ func (d *Display) LoadURLs() error {
 
 	cached := make(map[string]bool, 0)
 
-	if len(d.cache.Feeds) == 0 {
-		d.cache.Feeds = make([]*cache.Feed, 0)
-	} else {
-		for _, cachedFeed := range d.cache.Feeds {
-			cached[cachedFeed.Url] = true
-			d.rows = append(d.rows, []byte(cachedFeed.Url))
-			d.rendered = append(d.rendered, []byte(cachedFeed.Title))
-		}
+	for _, cachedFeed := range d.cache.GetFeeds() {
+		cached[cachedFeed.Url] = true
+		d.rows = append(d.rows, []byte(cachedFeed.Url))
+		d.rendered = append(d.rendered, []byte(cachedFeed.Title))
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -379,13 +375,10 @@ func (d *Display) LoadURLs() error {
 		if !strings.Contains(string(url), "#") {
 
 			if _, present := cached[string(url)]; !present {
+
 				d.rows = append(d.rows, url)
 				d.rendered = append(d.rendered, url)
-				d.cache.Feeds = append(d.cache.Feeds,
-					&cache.Feed{
-						Url:   string(url),
-						Title: string(url),
-					})
+				d.cache.AddFeedUrl(string(url))
 			}
 		}
 	}
@@ -413,7 +406,7 @@ func (d *Display) LoadFeed(url string) {
 	title = strings.Trim(title, " ")
 
 	var cached int
-	for _, cachedFeed := range d.cache.Feeds {
+	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
 			cachedFeed.Title = title
 			cachedFeed.Items = make([]*cache.Item, 0)
@@ -443,7 +436,7 @@ func (d *Display) LoadFeed(url string) {
 func (d *Display) LoadArticlesList(url string) {
 
 	log.Default().Printf("loading articles for url: %s", url)
-	for _, cachedFeed := range d.cache.Feeds {
+	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
 
 			if len(cachedFeed.Items) == 0 {
@@ -477,7 +470,7 @@ func (d *Display) LoadArticlesList(url string) {
 
 func (d *Display) LoadArticleText(url string) {
 
-	for _, cachedFeed := range d.cache.Feeds {
+	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
 
 			for _, i := range cachedFeed.Items {
