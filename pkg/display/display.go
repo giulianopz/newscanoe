@@ -420,7 +420,6 @@ func (d *Display) LoadFeed(url string) {
 
 func (d *Display) LoadArticlesList(url string) {
 
-	log.Default().Printf("loading articles for url: %s", url)
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
 
@@ -432,15 +431,8 @@ func (d *Display) LoadArticlesList(url string) {
 			d.resetRows()
 
 			for _, item := range cachedFeed.Items {
-
 				d.rows = append(d.rows, []byte(item.Url))
-				dateAndArticleName := fmt.Sprintf("%-20s %s", item.PubDate.Format("2006-January-02"), item.Title)
-				d.rendered = append(d.rendered, []byte(dateAndArticleName))
-			}
-
-			for i, r := range d.rows {
-				log.Printf("row at index %d: %s\n", i, string(r))
-				log.Printf("rendered as: %s\n", string(d.rendered[i]))
+				d.rendered = append(d.rendered, []byte(util.RenderArticleRow(item.PubDate, item.Title)))
 			}
 
 			d.resetCoordinates()
