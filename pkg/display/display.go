@@ -490,16 +490,6 @@ func (d *Display) LoadArticleText(url string) {
 					}
 					defer resp.Body.Close()
 
-					//TODO fix replacement chars
-					/*
-								 		b := bytes.Buffer{}
-								   		r := io.TeeReader(resp.Body, &b)
-						   				scanner := bufio.NewScanner(r)
-								   		for scanner.Scan() {
-								   			log.Default().Println(scanner.Text())
-								   		}
-					*/
-
 					converter := md.NewConverter("", true, nil)
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
@@ -508,27 +498,25 @@ func (d *Display) LoadArticleText(url string) {
 
 					d.resetRows()
 
-					for _, line := range strings.Split(markdown.String(), "\n") {
+					scanner := bufio.NewScanner(&markdown)
+					for scanner.Scan() {
 
-						line := strings.Trim(line, " ")
+						line := strings.TrimSpace(scanner.Text())
+
 						if line != "" {
 
 							if len(line) > d.width {
 
-								tmp := make([]byte, 0)
-								for _, r := range line {
-									if len(tmp) >= d.width {
-										d.rows = append(d.rows, tmp)
-										d.rendered = append(d.rendered, tmp)
-										tmp = make([]byte, 0)
-									}
-									tmp = append(tmp, byte(r))
-								}
-								if len(tmp) != 0 {
-									d.rows = append(d.rows, tmp)
-									d.rendered = append(d.rendered, tmp)
-								}
+								for i := 0; i < len(line); i += d.width {
+									end := i + d.width
 
+									if end > len(line) {
+										end = len(line)
+									}
+
+									d.rows = append(d.rows, []byte(line[i:end]))
+									d.rendered = append(d.rendered, []byte(line[i:end]))
+								}
 							} else {
 								d.rows = append(d.rows, []byte(line))
 								d.rendered = append(d.rendered, []byte(line))
@@ -554,18 +542,18 @@ func (d *Display) LoadArticleText(url string) {
 
 func (d *Display) Draw(buf *bytes.Buffer) {
 
-	log.Default().Printf("len of rendered: %d", len(d.rendered))
+	//log.Default().Printf("len of rendered: %d", len(d.rendered))
 	d.endoff = (len(d.rendered) - 1)
-	log.Default().Printf("before: from %d to %d\n", d.startoff, d.endoff)
+	//log.Default().Printf("before: from %d to %d\n", d.startoff, d.endoff)
 	if d.endoff >= (d.height - BOTTOM_PADDING) {
 		d.endoff = d.height - BOTTOM_PADDING - 1
 	}
 	if d.endoff+d.startoff <= (len(d.rendered) - 1) {
 		d.endoff += d.startoff
 	}
-	log.Default().Printf("after: from %d to %d\n", d.startoff, d.endoff)
+	//log.Default().Printf("after: from %d to %d\n", d.startoff, d.endoff)
 
-	log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
+	//log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
@@ -579,13 +567,15 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
 		// if so, the "LANG" env variable should contain "UTF"
 
-		for j, c := range string(d.rendered[i]) {
-			if j < (d.width) {
-				buf.WriteRune(c)
-			} else {
-				// TODO
-				log.Default().Println("char is beyond win width")
-			}
+		runes := utf8.RuneCountInString(string(d.rendered[i]))
+
+		if runes > d.width {
+			log.Default().Printf("runes for line %d exceed screen width: %d\n", i, runes)
+			continue
+		}
+
+		for _, c := range string(d.rendered[i]) {
+			buf.WriteRune(c)
 		}
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
