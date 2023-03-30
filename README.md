@@ -11,14 +11,15 @@ The only prerequisite is a file containing only urls of RSS/Atom feeds line-by-l
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
 
-## Usage
+## Keybindings
 
-Supported keybindings:
+Supported key bindings:
 - `r`, load/reload the currently selected feed
 - `R`, load/reload all the feeds
 - `q`, quit the app
 - `BACKSPACE`, go back to previous section
-- `ENTER`, open a feed or an article
+- `ENTER`, go to the list of articles of a feed or display a single article in the list (poor quality at the moment, read below for some alternatives)
+- `l`, opens an article with `lynx` if installed in the system 
 - `o`, open an article with the default browser for the user's desktop environment
 - `^`, `v`, `<`, `>`, move the cursor across the text
 
