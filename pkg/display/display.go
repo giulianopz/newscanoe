@@ -490,6 +490,27 @@ func (d *Display) LoadArticlesList(url string) {
 
 func (d *Display) LoadArticleText(url string) {
 
+	log.Default().Println("here")
+	if _, err := exec.LookPath("lynx"); err == nil {
+
+		cmd := exec.Command("lynx", url)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err = cmd.Start(); err != nil {
+			log.Default().Println(err)
+		}
+
+		if err = cmd.Wait(); err != nil {
+			log.Default().Println(err)
+		}
+
+		return
+	} else {
+		log.Default().Println(err)
+	}
+
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
 
