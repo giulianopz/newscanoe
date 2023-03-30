@@ -252,10 +252,15 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		}
 
 	case ctrlPlus('o'), 'o':
-		if d.currentSection == ARTICLE_TEXT {
-
+		if d.currentSection == ARTICLES_LIST {
 			if !headless() {
-				d.openWithBrowser(d.currentArticleUrl)
+				d.openWithBrowser(string(d.rows[d.currentRow()]))
+			}
+		}
+	case ctrlPlus('l'), 'l':
+		if d.currentSection == ARTICLES_LIST {
+			if isLynxPresent() {
+				d.openWithLynx(string(d.rows[d.currentRow()]))
 			}
 		}
 
@@ -483,33 +488,22 @@ func (d *Display) LoadArticlesList(url string) {
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
 
-			d.SetBottomMessage("HELP: Enter = view article | Backspace = go back")
+			var browserHelp string
+			if !headless() {
+				browserHelp = " | Ctrl-o/o = open with browser"
+			}
+
+			var lynxHelp string
+			if isLynxPresent() {
+				browserHelp = " | Ctrl-l/l = open with lynx"
+			}
+
+			d.SetBottomMessage(fmt.Sprintf("HELP: Enter = view article | Backspace = go back %s %s", browserHelp, lynxHelp))
 		}
 	}
 }
 
 func (d *Display) LoadArticleText(url string) {
-
-	log.Default().Println("here")
-	if _, err := exec.LookPath("lynx"); err == nil {
-
-		cmd := exec.Command("lynx", url)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		if err = cmd.Start(); err != nil {
-			log.Default().Println(err)
-		}
-
-		if err = cmd.Wait(); err != nil {
-			log.Default().Println(err)
-		}
-
-		return
-	} else {
-		log.Default().Println(err)
-	}
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -567,11 +561,7 @@ func (d *Display) LoadArticleText(url string) {
 				d.currentArticleUrl = url
 				d.currentSection = ARTICLE_TEXT
 
-				var browserHelp string
-				if !headless() {
-					browserHelp = "Ctrl-o/o = open with browser |"
-				}
-				d.SetBottomMessage(fmt.Sprintf("HELP: %s Backspace = go back", browserHelp))
+				d.SetBottomMessage("HELP: Backspace = go back")
 			}
 		}
 	}
@@ -651,7 +641,7 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 }
 
 /*
-openWithBrowser opens the current viewed article with the default browser for desktop environment.
+openWithBrowser opens the selected article with the default browser for desktop environment.
 The environment variable DISPLAY is used to detect if the app is running on a headless machine.
 see: https://wiki.debian.org/DefaultWebBrowser
 */
@@ -676,4 +666,29 @@ func (d *Display) openWithBrowser(url string) {
 func headless() bool {
 	displayVar, set := os.LookupEnv("DISPLAY")
 	return !set || displayVar == ""
+}
+
+func isLynxPresent() bool {
+	path, err := exec.LookPath("lynx")
+	return err == nil && path != ""
+}
+
+/*
+openWithLynx opens the selected article with lynx.
+see: https://lynx.invisible-island.net/
+*/
+func (d *Display) openWithLynx(url string) {
+
+	cmd := exec.Command("lynx", url)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		log.Default().Println(err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		log.Default().Println(err)
+	}
 }
