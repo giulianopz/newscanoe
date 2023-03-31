@@ -17,6 +17,7 @@ import (
 	"github.com/giulianopz/newscanoe/pkg/termios"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
@@ -44,6 +45,12 @@ const (
 	BOTTOM_PADDING = 3
 )
 
+const (
+	urlsListSectionMsg     = "HELP: q = quit | r = reload | R = reload all | a = add a feed"
+	articlesListSectionMsg = "HELP: Enter = view article | Backspace = go back"
+	articleTextSectionMsg  = "HELP: Backspace = go back"
+)
+
 type Display struct {
 	// cursor's position within terminal window
 	cx int
@@ -54,17 +61,18 @@ type Display struct {
 	// size of terminal window
 	height int
 	width  int
-
+	// message displayed in the bottom bar
 	bottomBarMsg string
-
-	//infotime  time.Time
-
+	// previous state of the terminal
 	origTermios unix.Termios
-
-	rows     [][]byte
+	// dislay raw text
+	raw [][]byte
+	// dislay rendered text
 	rendered [][]byte
-	cache    *cache.Cache
+	// gob cache
+	cache *cache.Cache
 
+	liveEditing       bool
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
@@ -92,6 +100,13 @@ func New(in uintptr) *Display {
 	return d
 }
 
+func (d *Display) Quit(quitC chan bool) {
+	fmt.Fprint(os.Stdout, "\x1b[?25h")
+	fmt.Fprint(os.Stdout, "\x1b[2J")
+	fmt.Fprint(os.Stdout, "\x1b[H")
+	quitC <- true
+}
+
 func (d *Display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
@@ -103,7 +118,7 @@ func (d *Display) resetCoordinates() {
 }
 
 func (d *Display) resetRows() {
-	d.rows = make([][]byte, 0)
+	d.raw = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 }
 
@@ -111,6 +126,7 @@ func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
 
+// TODO move only line-by-line or scroll page-by-page
 func (d *Display) MoveCursor(dir byte) {
 	switch dir {
 	case ARROW_LEFT:
@@ -123,13 +139,14 @@ func (d *Display) MoveCursor(dir byte) {
 	case ARROW_RIGHT:
 		if (d.cx - 1) < (len(d.rendered[d.currentRow()]) - 1) {
 			d.cx++
-		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) {
+		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) && d.cy+1 < len(d.rendered) {
 			d.cy++
 			d.cx = 1
 		}
 	case ARROW_DOWN:
+		log.Default().Println("down")
 		if d.cy < (d.height - BOTTOM_PADDING) {
-			if (d.cx - 1) <= (len(d.rendered[d.cy+d.startoff]) - 1) {
+			if d.currentRow()+1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()+1])-1) {
 				d.cy++
 			}
 		} else if d.endoff < len(d.rendered)-1 {
@@ -137,7 +154,7 @@ func (d *Display) MoveCursor(dir byte) {
 		}
 	case ARROW_UP:
 		if d.cy > 1 {
-			if (d.cx - 1) <= (len(d.rendered[d.cy-2+d.startoff]) - 1) {
+			if d.currentRow()-1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()-1])-1) {
 				d.cy--
 			}
 		} else if d.startoff > 0 {
@@ -156,6 +173,7 @@ func readKeyStroke(fd uintptr) byte {
 			//TODO use new slog
 			log.Default().Println(err)
 		}
+		log.Default().Printf("1st keystroke byte: %v", input)
 
 		if input[0] == '\x1b' {
 
@@ -166,7 +184,12 @@ func readKeyStroke(fd uintptr) byte {
 				return QUIT
 			}
 
+			log.Default().Printf("2nd keystroke byte: %v", seq[0])
+
 			if seq[0] == '[' {
+
+				log.Default().Printf("3rd keystroke byte: %v", seq[1])
+				log.Default().Printf("4th keystroke byte: %v", seq[2])
 
 				if seq[1] >= '0' && seq[1] <= '9' {
 					_, err = unix.Read(int(fd), seq[2:])
@@ -225,16 +248,113 @@ func readKeyStroke(fd uintptr) byte {
 	}
 }
 
-func (d *Display) Quit(quitC chan bool) {
-	fmt.Fprint(os.Stdout, "\x1b[?25h")
-	fmt.Fprint(os.Stdout, "\x1b[2J")
-	fmt.Fprint(os.Stdout, "\x1b[H")
-	quitC <- true
+func isLetter(input byte) bool {
+	return (input >= 'A' && input <= 'Z') || (input >= 'a' && input <= 'z')
+}
+
+func isDigit(input byte) bool {
+	return input >= '0' && input <= '9'
+}
+
+var specialChars = []byte{
+	';', ',', '/', '?', ':', '@', '&', '=', '+', '$', '-', '_', '.', '!', '~', '*', '(', ')', '#', 96,
+}
+
+/*
+isSpecialChar returns if a given input char is a reserved char as per RFC 3986
+see paragraph 2.2: https://www.ietf.org/rfc/rfc3986.txt
+*/
+func isSpecialChar(input byte) bool {
+	return slices.Contains(specialChars, input)
 }
 
 func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	input := readKeyStroke(fd)
+
+	// TODO copy from clipboard
+
+	if d.liveEditing {
+		switch {
+
+		//TODO move cursor along bottom bar
+
+		/* 		case input == ARROW_LEFT:
+		   			if d.cx > 1 {
+		   				d.cx--
+		   			}
+		   		case input == ARROW_RIGHT:
+		   			if d.cx < d.width {
+		   				d.cx++
+		   			} */
+		case input == BACKSPACE:
+			{
+				d.cx--
+				d.SetBottomMessage(d.bottomBarMsg[:len(d.bottomBarMsg)-1])
+			}
+		case input == ENTER:
+			{
+				url := strings.TrimSpace(d.bottomBarMsg)
+
+				// TODO extract this block in a func since repeated
+				fp := gofeed.NewParser()
+				parsedFeed, err := fp.ParseURL(url)
+				if err != nil {
+					log.Default().Println(err)
+					d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
+					return
+				}
+
+				// TODO extract this block in a func since too long
+				present, err := util.IsUrlAlreadyPresent(url)
+				if err != nil {
+					log.Default().Println(err)
+					d.SetTmpBottomMessage(3*time.Second, "cannot check if url is already present in config file!")
+					return
+				}
+
+				if present {
+					d.SetTmpBottomMessage(3*time.Second, "url already present!")
+					return
+				}
+
+				if err := util.AppendUrl(url); err != nil {
+					log.Default().Println(err)
+					d.SetTmpBottomMessage(3*time.Second, "cannot save url in config file!")
+					return
+				}
+
+				d.raw = append(d.raw, []byte(d.bottomBarMsg))
+				d.rendered = append(d.rendered, []byte(parsedFeed.Title))
+
+				d.SetBottomMessage(urlsListSectionMsg)
+				d.SetTmpBottomMessage(3*time.Second, "saved: type r to reload!")
+				d.liveEditing = false
+				d.cx = 1
+				d.cy = len(d.rendered)
+			}
+		case isLetter(input), isDigit(input), isSpecialChar(input):
+			{
+				if d.cx < d.width {
+					d.cx++
+					d.SetBottomMessage(fmt.Sprintf("%s%s", d.bottomBarMsg, string(input)))
+				}
+			}
+		case input == 11:
+			{
+				d.SetBottomMessage(urlsListSectionMsg)
+				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
+				d.liveEditing = false
+				d.cx = 1
+				d.cy = 1
+			}
+		default:
+			{
+				log.Default().Printf("unhandled: %v\n", input)
+			}
+		}
+		return
+	}
 
 	switch input {
 
@@ -243,7 +363,16 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ctrlPlus('r'), 'r':
 		if d.currentSection == URLS_LIST {
-			d.LoadFeed(string(d.rows[d.currentRow()]))
+			d.LoadFeed(string(d.raw[d.currentRow()]))
+		}
+
+	case ctrlPlus('a'), 'a':
+		if d.currentSection == URLS_LIST {
+			log.Default().Println("live editing enabled")
+			d.liveEditing = true
+			d.cy = d.height - 1
+			d.cx = 1
+			d.SetBottomMessage("")
 		}
 
 	case ctrlPlus('R'), 'R':
@@ -254,13 +383,14 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ctrlPlus('o'), 'o':
 		if d.currentSection == ARTICLES_LIST {
 			if !headless() {
-				d.openWithBrowser(string(d.rows[d.currentRow()]))
+				d.openWithBrowser(string(d.raw[d.currentRow()]))
 			}
 		}
+
 	case ctrlPlus('l'), 'l':
 		if d.currentSection == ARTICLES_LIST {
 			if isLynxPresent() {
-				d.openWithLynx(string(d.rows[d.currentRow()]))
+				d.openWithLynx(string(d.raw[d.currentRow()]))
 			}
 		}
 
@@ -271,9 +401,9 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case URLS_LIST:
-				d.LoadArticlesList(string(d.rows[d.currentRow()]))
+				d.LoadArticlesList(string(d.raw[d.currentRow()]))
 			case ARTICLES_LIST:
-				d.LoadArticleText(string(d.rows[d.currentRow()]))
+				d.LoadArticleText(string(d.raw[d.currentRow()]))
 			}
 		}
 
@@ -289,8 +419,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			}
 		}
 
-		/* 	default:
-		d.SetStatusMessage(fmt.Sprintf("keystroke: %v", input)) */
+	default:
+		{
+			log.Default().Printf("unhandled: %v\n", input)
+		}
 	}
 }
 
@@ -368,35 +500,43 @@ func (d *Display) LoadURLs() error {
 	}
 	defer file.Close()
 
-	cached := make(map[string]bool, 0)
-
-	for _, cachedFeed := range d.cache.GetFeeds() {
-		cached[cachedFeed.Url] = true
-		d.rows = append(d.rows, []byte(cachedFeed.Url))
-		d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+	empty, err := util.IsEmpty(file)
+	if err != nil {
+		log.Panicln(err)
 	}
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
+	if empty && len(d.cache.GetFeeds()) == 0 {
+		d.SetBottomMessage("no feed url: type 'a' to add one now")
+	} else {
+		cached := make(map[string]bool, 0)
 
-		url := scanner.Bytes()
-		if !strings.Contains(string(url), "#") {
+		// TODO show only feeds in config file
+		for _, cachedFeed := range d.cache.GetFeeds() {
+			cached[cachedFeed.Url] = true
+			d.raw = append(d.raw, []byte(cachedFeed.Url))
+			d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+		}
 
-			if _, present := cached[string(url)]; !present {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
 
-				d.rows = append(d.rows, url)
-				d.rendered = append(d.rendered, url)
-				d.cache.AddFeedUrl(string(url))
+			url := scanner.Bytes()
+			if !strings.Contains(string(url), "#") {
+
+				if _, present := cached[string(url)]; !present {
+
+					d.raw = append(d.raw, url)
+					d.rendered = append(d.rendered, url)
+					d.cache.AddFeedUrl(string(url))
+				}
 			}
 		}
+		d.SetBottomMessage(urlsListSectionMsg)
 	}
 
 	d.cy = 1
 	d.cx = 1
 	d.currentSection = URLS_LIST
-
-	d.SetBottomMessage("HELP: Ctrl-q/q = quit | Ctrl-r/r = reload | Ctrl-R/R = reload all")
-
 	return nil
 }
 
@@ -406,6 +546,8 @@ func (d *Display) LoadFeed(url string) {
 	parsedFeed, err := fp.ParseURL(url)
 	if err != nil {
 		log.Default().Println(err)
+		d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
+		return
 	}
 
 	title := strings.TrimSpace(parsedFeed.Title)
@@ -430,9 +572,9 @@ func (d *Display) LoadAllFeeds() {
 
 	origMsg := d.bottomBarMsg
 
-	for id := range d.rows {
+	for id := range d.raw {
 
-		url := string(d.rows[id])
+		url := string(d.raw[id])
 
 		log.Default().Printf("loading feed #%d from url %s\n", id, url)
 
@@ -440,6 +582,8 @@ func (d *Display) LoadAllFeeds() {
 		parsedFeed, err := fp.ParseURL(url)
 		if err != nil {
 			log.Default().Println(err)
+			d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
+			return
 		}
 
 		title := strings.TrimSpace(parsedFeed.Title)
@@ -452,7 +596,7 @@ func (d *Display) LoadAllFeeds() {
 
 		d.rendered[id] = []byte(title)
 
-		d.SetBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.rows)))
+		d.SetBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.raw)))
 		d.RefreshScreen()
 	}
 
@@ -479,7 +623,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.resetRows()
 
 			for _, item := range cachedFeed.Items {
-				d.rows = append(d.rows, []byte(item.Url))
+				d.raw = append(d.raw, []byte(item.Url))
 				d.rendered = append(d.rendered, []byte(util.RenderArticleRow(item.PubDate, item.Title)))
 			}
 
@@ -498,7 +642,7 @@ func (d *Display) LoadArticlesList(url string) {
 				browserHelp = " | Ctrl-l/l = open with lynx"
 			}
 
-			d.SetBottomMessage(fmt.Sprintf("HELP: Enter = view article | Backspace = go back %s %s", browserHelp, lynxHelp))
+			d.SetBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
 		}
 	}
 }
@@ -545,11 +689,11 @@ func (d *Display) LoadArticleText(url string) {
 										end = len(line)
 									}
 
-									d.rows = append(d.rows, []byte(line[i:end]))
+									d.raw = append(d.raw, []byte(line[i:end]))
 									d.rendered = append(d.rendered, []byte(line[i:end]))
 								}
 							} else {
-								d.rows = append(d.rows, []byte(line))
+								d.raw = append(d.raw, []byte(line))
 								d.rendered = append(d.rendered, []byte(line))
 							}
 						}
@@ -561,7 +705,7 @@ func (d *Display) LoadArticleText(url string) {
 				d.currentArticleUrl = url
 				d.currentSection = ARTICLE_TEXT
 
-				d.SetBottomMessage("HELP: Backspace = go back")
+				d.SetBottomMessage(articleTextSectionMsg)
 			}
 		}
 	}

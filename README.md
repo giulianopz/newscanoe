@@ -7,19 +7,22 @@ Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https
 
 ### Configuration
 
-The only prerequisite is a file containing only urls of RSS/Atom feeds line-by-line (see the [urls sample file](./assets/urls)) located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
+The only config file consists of urls of RSS/Atom feeds listed line-by-line (see the [urls sample file](./assets/urls)) and located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
+
+If such file does not already exist, it will be created at the first execution of the app and the user will be able to manually insert a url by typing `a` or by creating/modifying such file with any text editor.
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
 
 ### Keybindings
 
 Supported key bindings:
+- `a`, insert manually a new feed url
 - `r`, load/reload the currently selected feed
 - `R`, load/reload all the feeds
 - `q`, quit the app
 - `BACKSPACE`, go back to previous section
 - `ENTER`, go to the list of articles of a feed or display a single article in the list (poor quality at the moment, read below for some alternatives)
-- `l`, opens an article with `lynx` if installed in the system 
+- `l`, open an article with `lynx` if installed in the system 
 - `o`, open an article with the default browser for the user's desktop environment
 - `^`, `v`, `<`, `>`, move the cursor across the text
 

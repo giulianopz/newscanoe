@@ -2,7 +2,6 @@ package cache
 
 import (
 	"encoding/gob"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -38,6 +37,7 @@ type Feed struct {
 	Items []*Item
 }
 
+// TODO invert args
 func NewFeed(title, url string) *Feed {
 	return &Feed{
 		Title: title,
@@ -129,7 +129,15 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("cannot add feed")
+
+	newFeed := NewFeed(title, url)
+	for _, parsedItem := range parsedFeed.Items {
+		cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
+		newFeed.Items = append(newFeed.Items, cachedItem)
+	}
+	c.feeds = append(c.feeds, newFeed)
+
+	return nil
 }
 
 func (c *Cache) AddFeedUrl(url string) {
