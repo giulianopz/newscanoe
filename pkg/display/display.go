@@ -817,14 +817,19 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 
+	// inverted colors attribute
 	buf.WriteString("\x1b[7m")
 	if d.editing {
+		// red
 		buf.WriteString("\x1b[91m")
 	} else {
+		// white
 		buf.WriteString("\x1b[37m")
 	}
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
+	// attributes off
 	buf.WriteString("\x1b[m")
+	// default color
 	buf.WriteString("\x1b[39m")
 }
 
