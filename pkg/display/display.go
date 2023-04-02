@@ -549,13 +549,10 @@ func (d *Display) LoadURLs() error {
 	if empty && len(d.cache.GetFeeds()) == 0 {
 		d.SetBottomMessage("no feed url: type 'a' to add one now")
 	} else {
-		cached := make(map[string]bool, 0)
+		cached := make(map[string]*cache.Feed, 0)
 
-		// TODO show only feeds in config file
 		for _, cachedFeed := range d.cache.GetFeeds() {
-			cached[cachedFeed.Url] = true
-			d.raw = append(d.raw, []byte(cachedFeed.Url))
-			d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+			cached[cachedFeed.Url] = cachedFeed
 		}
 
 		scanner := bufio.NewScanner(file)
@@ -564,11 +561,14 @@ func (d *Display) LoadURLs() error {
 			url := scanner.Bytes()
 			if !strings.Contains(string(url), "#") {
 
-				if _, present := cached[string(url)]; !present {
+				cachedFeed, present := cached[string(url)]
+				if !present {
 
 					d.raw = append(d.raw, url)
 					d.rendered = append(d.rendered, url)
-					d.cache.AddFeedUrl(string(url))
+				} else {
+					d.raw = append(d.raw, []byte(cachedFeed.Url))
+					d.rendered = append(d.rendered, []byte(cachedFeed.Title))
 				}
 			}
 		}

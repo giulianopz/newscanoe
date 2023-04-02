@@ -91,7 +91,6 @@ func isAlreadyPresent(url string, f *os.File) (bool, error) {
 				return false, err
 			}
 
-			log.Default().Printf("%s vs %s", strings.TrimSpace(url), strings.TrimSpace(scanner.Text()))
 			if strings.TrimSpace(url) == strings.TrimSpace(scanner.Text()) {
 				return true, nil
 			}
