@@ -16,15 +16,19 @@ Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$
 ### Keybindings
 
 Supported key bindings:
-- `a`, insert manually a new feed url
 - `r`, load/reload the currently selected feed
 - `R`, load/reload all the feeds
 - `q`, quit the app
 - `BACKSPACE`, go back to previous section
-- `ENTER`, go to the list of articles of a feed or display a single article in the list (poor quality at the moment, read below for some alternatives)
+- `ENTER`, go into the currently highlighted element
 - `l`, open an article with `lynx` if installed in the system 
 - `o`, open an article with the default browser for the user's desktop environment
-- `^`, `v`, `<`, `>`, move the cursor across the text
+- `^`, `v`, move the cursor across the text
+- `a`, insert manually a new feed url, then:
+    - `<`, `>`, move the cursor across the text
+    - `BACKSPACE`, cancel last char
+    - `CANC`, cancel currently highlighted char
+    - `ENTER`, append the typed in url in the config file
 
 ### Installation
 
@@ -40,7 +44,7 @@ Build from source:
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
 
-[![asciicast](https://asciinema.org/a/YyzLpxYUswPqeaeoRYVnAP9y1.svg)](https://asciinema.org/a/YyzLpxYUswPqeaeoRYVnAP9y1)
+[![asciicast](https://asciinema.org/a/jYCL3CFDmPES9dsptTxwj8IEk.svg)](https://asciinema.org/a/jYCL3CFDmPES9dsptTxwj8IEk)
 
 ### Development
 
