@@ -133,7 +133,6 @@ func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
 
-// TODO move only line-by-line or scroll page-by-page
 func (d *Display) MoveCursor(dir byte) {
 	switch dir {
 	/* case ARROW_LEFT:
@@ -438,7 +437,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case PAGE_UP, PAGE_DOWN:
 		{
-			// TODO
+			// TODO impl scroll
 		}
 
 	case ENTER:
