@@ -136,7 +136,7 @@ func ctrlPlus(k byte) byte {
 // TODO move only line-by-line or scroll page-by-page
 func (d *Display) MoveCursor(dir byte) {
 	switch dir {
-	case ARROW_LEFT:
+	/* case ARROW_LEFT:
 		if d.cx > 1 {
 			d.cx--
 		} else if d.cy > 1 {
@@ -149,7 +149,7 @@ func (d *Display) MoveCursor(dir byte) {
 		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) && d.cy+1 < len(d.rendered) {
 			d.cy++
 			d.cx = 1
-		}
+		} */
 	case ARROW_DOWN:
 		log.Default().Println("down")
 		if d.cy < (d.height - BOTTOM_PADDING) {
@@ -435,6 +435,11 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
 		d.MoveCursor(input)
+
+	case PAGE_UP, PAGE_DOWN:
+		{
+			// TODO
+		}
 
 	case ENTER:
 		{
