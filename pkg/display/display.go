@@ -3,6 +3,7 @@ package display
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -61,8 +62,12 @@ type Display struct {
 	// size of terminal window
 	height int
 	width  int
+
 	// message displayed in the bottom bar
 	bottomBarMsg string
+	// message displayed in the right corner of the bottom bar
+	bottomRightCorner string
+
 	// previous state of the terminal
 	origTermios unix.Termios
 	// dislay raw text
@@ -72,7 +77,9 @@ type Display struct {
 	// gob cache
 	cache *cache.Cache
 
-	liveEditing       bool
+	editing    bool
+	editingBuf []string
+
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
@@ -175,6 +182,7 @@ func readKeyStroke(fd uintptr) byte {
 		}
 		log.Default().Printf("1st keystroke byte: %v", input)
 
+		// 27 (ESC)
 		if input[0] == '\x1b' {
 
 			seq := make([]byte, 3)
@@ -186,53 +194,51 @@ func readKeyStroke(fd uintptr) byte {
 
 			log.Default().Printf("2nd keystroke byte: %v", seq[0])
 
+			// 91
 			if seq[0] == '[' {
 
 				log.Default().Printf("3rd keystroke byte: %v", seq[1])
 				log.Default().Printf("4th keystroke byte: %v", seq[2])
 
+				// 48 and 57
 				if seq[1] >= '0' && seq[1] <= '9' {
-					_, err = unix.Read(int(fd), seq[2:])
-					if err != nil {
-						return QUIT
-					}
-
+					// 126
 					if seq[2] == '~' {
 						switch seq[1] {
-						case '1':
+						case '1': // 49
 							return HOME_KEY
-						case '3':
+						case '3': // 51
 							return DEL_KEY
-						case '4':
+						case '4': // 52
 							return END_KEY
-						case '5':
+						case '5': // 53
 							return PAGE_UP
-						case '6':
+						case '6': // 54
 							return PAGE_DOWN
-						case '7':
+						case '7': // 55
 							return HOME_KEY
-						case '8':
+						case '8': // 56
 							return END_KEY
 						}
 					}
 				} else {
 
 					switch seq[1] {
-					case 'A':
+					case 'A': // 65
 						return ARROW_UP
-					case 'B':
+					case 'B': // 65
 						return ARROW_DOWN
-					case 'C':
+					case 'C': // 67
 						return ARROW_RIGHT
-					case 'D':
+					case 'D': // 68
 						return ARROW_LEFT
-					case 'H':
+					case 'H': // 72
 						return HOME_KEY
-					case 'F':
+					case 'F': // 70
 						return END_KEY
 					}
 				}
-			} else if seq[0] == 'O' {
+			} else if seq[0] == 'O' { // 79
 
 				switch seq[1] {
 				case 'H':
@@ -274,27 +280,46 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	// TODO copy from clipboard
 
-	if d.liveEditing {
+	if d.editing {
 		switch {
 
-		//TODO move cursor along bottom bar
+		case input == ARROW_LEFT:
+			if d.cx > 1 {
+				d.cx--
+			}
+		case input == ARROW_RIGHT:
+			if d.cx < len(d.editingBuf)+1 {
+				d.cx++
+			}
 
-		/* 		case input == ARROW_LEFT:
-		   			if d.cx > 1 {
-		   				d.cx--
-		   			}
-		   		case input == ARROW_RIGHT:
-		   			if d.cx < d.width {
-		   				d.cx++
-		   			} */
+		case input == DEL_KEY:
+			{
+
+				i := d.cx - 1
+				if i < len(d.editingBuf) {
+
+					copy(d.editingBuf[i:], d.editingBuf[i+1:])
+					d.editingBuf[len(d.editingBuf)-1] = ""
+					d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
+
+					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+				}
+			}
+
 		case input == BACKSPACE:
 			{
-				d.cx--
-				d.SetBottomMessage(d.bottomBarMsg[:len(d.bottomBarMsg)-1])
+				if len(d.editingBuf) != 0 && d.cx == len(d.editingBuf)+1 {
+					d.editingBuf[len(d.editingBuf)-1] = ""
+					d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
+
+					d.cx--
+
+					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+				}
 			}
 		case input == ENTER:
 			{
-				url := strings.TrimSpace(d.bottomBarMsg)
+				url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
 				// TODO extract this block in a func since repeated
 				fp := gofeed.NewParser()
@@ -306,20 +331,15 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				}
 
 				// TODO extract this block in a func since too long
-				present, err := util.IsUrlAlreadyPresent(url)
-				if err != nil {
-					log.Default().Println(err)
-					d.SetTmpBottomMessage(3*time.Second, "cannot check if url is already present in config file!")
-					return
-				}
-
-				if present {
-					d.SetTmpBottomMessage(3*time.Second, "url already present!")
-					return
-				}
-
 				if err := util.AppendUrl(url); err != nil {
 					log.Default().Println(err)
+
+					var target *util.UrlAlreadyPresentErr
+					if errors.As(err, &target) {
+						d.SetTmpBottomMessage(3*time.Second, err.Error())
+						return
+					}
+
 					d.SetTmpBottomMessage(3*time.Second, "cannot save url in config file!")
 					return
 				}
@@ -329,22 +349,37 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 				d.SetBottomMessage(urlsListSectionMsg)
 				d.SetTmpBottomMessage(3*time.Second, "saved: type r to reload!")
-				d.liveEditing = false
+
+				d.editing = false
+				d.editingBuf = []string{}
+
 				d.cx = 1
 				d.cy = len(d.rendered)
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
 			{
-				if d.cx < d.width {
+				if d.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
+
+					i := d.cx - 1
+					if i == len(d.editingBuf) {
+						d.editingBuf = append(d.editingBuf, string(input))
+					} else {
+						d.editingBuf = append(d.editingBuf[:i+1], d.editingBuf[i:]...)
+						d.editingBuf[i] = string(input)
+					}
 					d.cx++
-					d.SetBottomMessage(fmt.Sprintf("%s%s", d.bottomBarMsg, string(input)))
+
+					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
 				}
 			}
-		case input == 11:
+		case input == QUIT:
 			{
 				d.SetBottomMessage(urlsListSectionMsg)
 				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
-				d.liveEditing = false
+
+				d.editing = false
+				d.editingBuf = []string{}
+
 				d.cx = 1
 				d.cy = 1
 			}
@@ -369,9 +404,13 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	case ctrlPlus('a'), 'a':
 		if d.currentSection == URLS_LIST {
 			log.Default().Println("live editing enabled")
-			d.liveEditing = true
+
+			d.editing = true
+			d.editingBuf = []string{}
+
 			d.cy = d.height - 1
 			d.cx = 1
+
 			d.SetBottomMessage("")
 		}
 
@@ -441,8 +480,10 @@ func (d *Display) RefreshScreen() {
 
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
-	// show cursor
-	//buf.WriteString("\x1b[?25h")
+	if d.editing {
+		// show cursor
+		buf.WriteString("\x1b[?25h")
+	}
 
 	fmt.Fprint(os.Stdout, buf)
 }
@@ -769,17 +810,20 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
-	var bottomRightCorner string
 	if DebugMode {
-		bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
 	} else {
-		bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
+		d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	}
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 
 	buf.WriteString("\x1b[7m")
-	buf.WriteString("\x1b[37m")
-	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, bottomRightCorner))
+	if d.editing {
+		buf.WriteString("\x1b[91m")
+	} else {
+		buf.WriteString("\x1b[37m")
+	}
+	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
 	buf.WriteString("\x1b[m")
 	buf.WriteString("\x1b[39m")
 }

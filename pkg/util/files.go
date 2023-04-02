@@ -76,29 +76,23 @@ func IsEmpty(f *os.File) (bool, error) {
 	return info.Size() == 0, nil
 }
 
-func IsUrlAlreadyPresent(url string) (bool, error) {
-	path, err := GetUrlsFilePath()
-	if err != nil {
-		return false, err
-	}
-
-	f, err := os.OpenFile(path, os.O_RDONLY, 0664)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
+func isAlreadyPresent(url string, f *os.File) (bool, error) {
 	stat, err := f.Stat()
 	if err != nil {
 		return false, err
 	}
 
-	trimmedUrl := strings.TrimSpace(url)
-
 	if stat.Size() != 0 {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			if strings.TrimSpace(trimmedUrl) == trimmedUrl {
+
+			if err := scanner.Err(); err != nil {
+				log.Default().Printf("scan failed due to: %v\n", err)
+				return false, err
+			}
+
+			log.Default().Printf("%s vs %s", strings.TrimSpace(url), strings.TrimSpace(scanner.Text()))
+			if strings.TrimSpace(url) == strings.TrimSpace(scanner.Text()) {
 				return true, nil
 			}
 		}
@@ -113,7 +107,7 @@ func AppendUrl(url string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0664)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_RDWR, 0664)
 	if err != nil {
 		return err
 	}
@@ -121,16 +115,27 @@ func AppendUrl(url string) error {
 
 	trimmedUrl := strings.TrimSpace(url)
 
-	present, err := IsUrlAlreadyPresent(trimmedUrl)
+	alreadyPresent, err := isAlreadyPresent(trimmedUrl, f)
 	if err != nil {
 		return err
-	}
-	if present {
-		return fmt.Errorf("url already present!")
+	} else if alreadyPresent {
+		return newUrlAlreadyPresentErr(url)
 	}
 
 	if _, err := f.WriteString(fmt.Sprintf("%s\n", trimmedUrl)); err != nil {
 		return err
 	}
 	return nil
+}
+
+type UrlAlreadyPresentErr struct {
+	url string
+}
+
+func (e *UrlAlreadyPresentErr) Error() string {
+	return fmt.Sprintf("url is already present: %s", e.url)
+}
+
+func newUrlAlreadyPresentErr(url string) *UrlAlreadyPresentErr {
+	return &UrlAlreadyPresentErr{url: url}
 }

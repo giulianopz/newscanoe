@@ -37,8 +37,7 @@ type Feed struct {
 	Items []*Item
 }
 
-// TODO invert args
-func NewFeed(title, url string) *Feed {
+func NewFeed(url, title string) *Feed {
 	return &Feed{
 		Title: title,
 		Url:   url,
@@ -130,7 +129,7 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		}
 	}
 
-	newFeed := NewFeed(title, url)
+	newFeed := NewFeed(url, title)
 	for _, parsedItem := range parsedFeed.Items {
 		cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
 		newFeed.Items = append(newFeed.Items, cachedItem)
