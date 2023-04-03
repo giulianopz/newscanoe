@@ -446,11 +446,23 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ENTER:
 		{
+			url := string(d.raw[d.currentRow()])
+
 			switch d.currentSection {
 			case URLS_LIST:
-				d.LoadArticlesList(string(d.raw[d.currentRow()]))
+				d.LoadArticlesList(url)
 			case ARTICLES_LIST:
-				d.LoadArticleText(string(d.raw[d.currentRow()]))
+				done := make(chan bool, 1)
+
+				go d.LoadArticleText(url, done)
+
+				select {
+				case <-done:
+					return
+				case <-time.After(1 * time.Second):
+					d.SetTmpBottomMessage(1*time.Second, "timeout fetching article text!")
+					return
+				}
 			}
 		}
 
@@ -683,12 +695,12 @@ func (d *Display) LoadArticlesList(url string) {
 
 			var browserHelp string
 			if !headless() {
-				browserHelp = " | Ctrl-o/o = open with browser"
+				browserHelp = " | o = open with browser"
 			}
 
 			var lynxHelp string
 			if isLynxPresent() {
-				browserHelp = " | Ctrl-l/l = open with lynx"
+				lynxHelp = " | l = open with lynx"
 			}
 
 			d.SetBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
@@ -696,7 +708,11 @@ func (d *Display) LoadArticlesList(url string) {
 	}
 }
 
-func (d *Display) LoadArticleText(url string) {
+var client = http.Client{
+	Timeout: 3 * time.Second,
+}
+
+func (d *Display) LoadArticleText(url string, done chan bool) {
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -705,7 +721,7 @@ func (d *Display) LoadArticleText(url string) {
 
 				if i.Url == url {
 
-					resp, err := http.Get(i.Url)
+					resp, err := client.Get(i.Url)
 					if err != nil {
 						log.Default().Println(err)
 						d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
@@ -728,6 +744,8 @@ func (d *Display) LoadArticleText(url string) {
 
 						line := strings.TrimSpace(scanner.Text())
 						if line != "" {
+
+							log.Default().Println("line: ", line)
 
 							if len(line) > d.width {
 
@@ -755,9 +773,11 @@ func (d *Display) LoadArticleText(url string) {
 				d.currentSection = ARTICLE_TEXT
 
 				d.SetBottomMessage(articleTextSectionMsg)
+				break
 			}
 		}
 	}
+	done <- true
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
@@ -866,11 +886,13 @@ func (d *Display) openWithBrowser(url string) {
 // headless detects if this is a headless machine by looking up the DISPLAY environment variable
 func headless() bool {
 	displayVar, set := os.LookupEnv("DISPLAY")
+	log.Default().Printf("DISPLAY=%s", displayVar)
 	return !set || displayVar == ""
 }
 
 func isLynxPresent() bool {
 	path, err := exec.LookPath("lynx")
+	log.Default().Printf("lynx=%s", path)
 	return err == nil && path != ""
 }
 
