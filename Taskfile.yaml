@@ -7,3 +7,6 @@ tasks:
   install:
     cmds:
       - cp ./newscanoe /usr/local/bin
+  debug:
+    cmds:
+      - go run cmd/newscanoe/main.go -d 2> log

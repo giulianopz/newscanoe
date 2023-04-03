@@ -150,7 +150,6 @@ func (d *Display) MoveCursor(dir byte) {
 			d.cx = 1
 		} */
 	case ARROW_DOWN:
-		log.Default().Println("down")
 		if d.cy < (d.height - BOTTOM_PADDING) {
 			if d.currentRow()+1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()+1])-1) {
 				d.cy++
@@ -353,7 +352,13 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.editingBuf = []string{}
 
 				d.cx = 1
-				d.cy = len(d.rendered)
+				if len(d.rendered) > d.cy {
+					d.cy = d.height - BOTTOM_PADDING
+					d.startoff = len(d.rendered) - d.cy
+				} else {
+					d.cy = len(d.rendered)
+					d.startoff = 0
+				}
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
 			{
@@ -379,8 +384,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.editing = false
 				d.editingBuf = []string{}
 
-				d.cx = 1
-				d.cy = 1
+				d.resetCoordinates()
 			}
 		default:
 			{
