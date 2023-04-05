@@ -452,17 +452,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			case URLS_LIST:
 				d.LoadArticlesList(url)
 			case ARTICLES_LIST:
-				done := make(chan bool, 1)
-
-				go d.LoadArticleText(url, done)
-
-				select {
-				case <-done:
-					return
-				case <-time.After(1 * time.Second):
-					d.SetTmpBottomMessage(1*time.Second, "timeout fetching article text!")
-					return
-				}
+				d.LoadArticleText(url)
 			}
 		}
 
@@ -712,7 +702,7 @@ var client = http.Client{
 	Timeout: 3 * time.Second,
 }
 
-func (d *Display) LoadArticleText(url string, done chan bool) {
+func (d *Display) LoadArticleText(url string) {
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -777,7 +767,6 @@ func (d *Display) LoadArticleText(url string, done chan bool) {
 			}
 		}
 	}
-	done <- true
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
