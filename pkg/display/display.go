@@ -114,6 +114,11 @@ func (d *Display) Quit(quitC chan bool) {
 	quitC <- true
 }
 
+func (d *Display) AppendRow(raw, rendered string) {
+	d.raw = append(d.raw, []byte(raw))
+	d.rendered = append(d.rendered, []byte(rendered))
+}
+
 func (d *Display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
@@ -333,8 +338,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 					return
 				}
 
-				d.raw = append(d.raw, []byte(url))
-				d.rendered = append(d.rendered, []byte(url))
+				d.AppendRow(url, url)
 
 				d.cx = 1
 				if len(d.rendered) > d.cy {
@@ -566,12 +570,9 @@ func (d *Display) LoadURLs() error {
 
 				cachedFeed, present := cached[string(url)]
 				if !present {
-
-					d.raw = append(d.raw, url)
-					d.rendered = append(d.rendered, url)
+					d.AppendRow(string(url), string(url))
 				} else {
-					d.raw = append(d.raw, []byte(cachedFeed.Url))
-					d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+					d.AppendRow(cachedFeed.Url, cachedFeed.Title)
 				}
 			}
 		}
@@ -667,8 +668,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.resetRows()
 
 			for _, item := range cachedFeed.Items {
-				d.raw = append(d.raw, []byte(item.Url))
-				d.rendered = append(d.rendered, []byte(util.RenderArticleRow(item.PubDate, item.Title)))
+				d.AppendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
 			d.resetCoordinates()
@@ -738,13 +738,10 @@ func (d *Display) LoadArticleText(url string) {
 									if end > len(line) {
 										end = len(line)
 									}
-
-									d.raw = append(d.raw, []byte(line[i:end]))
-									d.rendered = append(d.rendered, []byte(line[i:end]))
+									d.AppendRow(line[i:end], line[i:end])
 								}
 							} else {
-								d.raw = append(d.raw, []byte(line))
-								d.rendered = append(d.rendered, []byte(line))
+								d.AppendRow(line, line)
 							}
 						}
 					}
