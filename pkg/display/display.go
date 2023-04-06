@@ -44,6 +44,10 @@ const (
 	ARTICLE_TEXT
 	//
 	BOTTOM_PADDING = 3
+	// colors
+	WHITE = 37
+	RED   = 31
+	GREEN = 32
 )
 
 const (
@@ -63,6 +67,7 @@ type Display struct {
 	height int
 	width  int
 
+	bottomBarColor int
 	// message displayed in the bottom bar
 	bottomBarMsg string
 	// message displayed in the right corner of the bottom bar
@@ -77,8 +82,8 @@ type Display struct {
 	// gob cache
 	cache *cache.Cache
 
-	editing    bool
-	editingBuf []string
+	editingMode bool
+	editingBuf  []string
 
 	currentSection    int
 	currentArticleUrl string
@@ -87,11 +92,12 @@ type Display struct {
 
 func New(in uintptr) *Display {
 	d := &Display{
-		cx:       1,
-		cy:       1,
-		startoff: 0,
-		endoff:   0,
-		cache:    cache.NewCache(),
+		cx:             1,
+		cy:             1,
+		startoff:       0,
+		endoff:         0,
+		cache:          cache.NewCache(),
+		bottomBarColor: WHITE,
 	}
 
 	d.SetWindowSize(in)
@@ -283,7 +289,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	// TODO copy from clipboard
 
-	if d.editing {
+	if d.editingMode {
 		switch {
 
 		case input == ARROW_LEFT:
@@ -352,9 +358,12 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.LoadFeed(url)
 
 				d.SetBottomMessage(urlsListSectionMsg)
+
+				d.bottomBarColor = GREEN
+
 				d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
 
-				d.editing = false
+				d.editingMode = false
 				d.editingBuf = []string{}
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
@@ -378,8 +387,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.SetBottomMessage(urlsListSectionMsg)
 				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
 
-				d.editing = false
+				d.editingMode = false
 				d.editingBuf = []string{}
+
+				d.bottomBarColor = WHITE
 
 				d.resetCoordinates()
 			}
@@ -405,12 +416,13 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		if d.currentSection == URLS_LIST {
 			log.Default().Println("live editing enabled")
 
-			d.editing = true
+			d.editingMode = true
 			d.editingBuf = []string{}
 
 			d.cy = d.height - 1
 			d.cx = 1
 
+			d.bottomBarColor = RED
 			d.SetBottomMessage("")
 		}
 
@@ -487,7 +499,7 @@ func (d *Display) RefreshScreen() {
 
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
-	if d.editing {
+	if d.editingMode {
 		// show cursor
 		buf.WriteString("\x1b[?25h")
 	}
@@ -504,6 +516,7 @@ func (d *Display) SetTmpBottomMessage(t time.Duration, msg string) {
 	d.SetBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
+			d.bottomBarColor = WHITE
 			d.SetBottomMessage(previous)
 		})
 	}()
@@ -826,14 +839,9 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 
 	// inverted colors attribute
 	buf.WriteString("\x1b[7m")
-	if d.editing {
-		// red
-		buf.WriteString("\x1b[91m")
-	} else {
-		// white
-		buf.WriteString("\x1b[37m")
-	}
+	buf.WriteString(fmt.Sprintf("\x1b[%dm", d.bottomBarColor))
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
+
 	// attributes off
 	buf.WriteString("\x1b[m")
 	// default color
