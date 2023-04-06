@@ -319,15 +319,6 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			{
 				url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
-				// TODO extract this block in a func since repeated
-				fp := gofeed.NewParser()
-				parsedFeed, err := fp.ParseURL(url)
-				if err != nil {
-					log.Default().Println(err)
-					d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
-					return
-				}
-
 				// TODO extract this block in a func since too long
 				if err := util.AppendUrl(url); err != nil {
 					log.Default().Println(err)
@@ -342,14 +333,8 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 					return
 				}
 
-				d.raw = append(d.raw, []byte(d.bottomBarMsg))
-				d.rendered = append(d.rendered, []byte(parsedFeed.Title))
-
-				d.SetBottomMessage(urlsListSectionMsg)
-				d.SetTmpBottomMessage(3*time.Second, "saved: type r to reload!")
-
-				d.editing = false
-				d.editingBuf = []string{}
+				d.raw = append(d.raw, []byte(url))
+				d.rendered = append(d.rendered, []byte(url))
 
 				d.cx = 1
 				if len(d.rendered) > d.cy {
@@ -359,6 +344,14 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 					d.cy = len(d.rendered)
 					d.startoff = 0
 				}
+
+				d.LoadFeed(url)
+
+				d.SetBottomMessage(urlsListSectionMsg)
+				d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
+
+				d.editing = false
+				d.editingBuf = []string{}
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
 			{
