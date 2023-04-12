@@ -44,6 +44,10 @@ const (
 	ARTICLE_TEXT
 	//
 	BOTTOM_PADDING = 3
+	// colors
+	WHITE = 37
+	RED   = 31
+	GREEN = 32
 )
 
 const (
@@ -63,6 +67,7 @@ type Display struct {
 	height int
 	width  int
 
+	bottomBarColor int
 	// message displayed in the bottom bar
 	bottomBarMsg string
 	// message displayed in the right corner of the bottom bar
@@ -77,8 +82,8 @@ type Display struct {
 	// gob cache
 	cache *cache.Cache
 
-	editing    bool
-	editingBuf []string
+	editingMode bool
+	editingBuf  []string
 
 	currentSection    int
 	currentArticleUrl string
@@ -87,11 +92,12 @@ type Display struct {
 
 func New(in uintptr) *Display {
 	d := &Display{
-		cx:       1,
-		cy:       1,
-		startoff: 0,
-		endoff:   0,
-		cache:    cache.NewCache(),
+		cx:             1,
+		cy:             1,
+		startoff:       0,
+		endoff:         0,
+		cache:          cache.NewCache(),
+		bottomBarColor: WHITE,
 	}
 
 	d.SetWindowSize(in)
@@ -112,6 +118,11 @@ func (d *Display) Quit(quitC chan bool) {
 	fmt.Fprint(os.Stdout, "\x1b[2J")
 	fmt.Fprint(os.Stdout, "\x1b[H")
 	quitC <- true
+}
+
+func (d *Display) AppendRow(raw, rendered string) {
+	d.raw = append(d.raw, []byte(raw))
+	d.rendered = append(d.rendered, []byte(rendered))
 }
 
 func (d *Display) currentRow() int {
@@ -164,6 +175,43 @@ func (d *Display) MoveCursor(dir byte) {
 			}
 		} else if d.startoff > 0 {
 			d.startoff--
+		}
+	}
+}
+
+func (d *Display) Scroll(dir byte) {
+	switch dir {
+	case PAGE_DOWN:
+		{
+			if d.endoff == len(d.rendered)-1 {
+				return
+			}
+
+			firstItemInNextPage := d.endoff + 1
+			if firstItemInNextPage < len(d.rendered)-1 {
+				d.startoff = firstItemInNextPage
+			} else {
+				d.startoff++
+				d.endoff = len(d.rendered) - 1
+			}
+
+			d.cy = d.height - BOTTOM_PADDING
+		}
+	case PAGE_UP:
+		{
+			if d.startoff == 0 {
+				return
+			}
+
+			firstItemInPreviousPage := d.startoff - (d.height - BOTTOM_PADDING)
+			if firstItemInPreviousPage >= 0 {
+				d.startoff = firstItemInPreviousPage
+			} else {
+				d.startoff = 0
+				d.endoff = d.height - BOTTOM_PADDING - 1
+			}
+
+			d.cy = 1
 		}
 	}
 }
@@ -278,7 +326,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	// TODO copy from clipboard
 
-	if d.editing {
+	if d.editingMode {
 		switch {
 
 		case input == ARROW_LEFT:
@@ -319,15 +367,6 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			{
 				url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
-				// TODO extract this block in a func since repeated
-				fp := gofeed.NewParser()
-				parsedFeed, err := fp.ParseURL(url)
-				if err != nil {
-					log.Default().Println(err)
-					d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
-					return
-				}
-
 				// TODO extract this block in a func since too long
 				if err := util.AppendUrl(url); err != nil {
 					log.Default().Println(err)
@@ -342,14 +381,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 					return
 				}
 
-				d.raw = append(d.raw, []byte(d.bottomBarMsg))
-				d.rendered = append(d.rendered, []byte(parsedFeed.Title))
-
-				d.SetBottomMessage(urlsListSectionMsg)
-				d.SetTmpBottomMessage(3*time.Second, "saved: type r to reload!")
-
-				d.editing = false
-				d.editingBuf = []string{}
+				d.AppendRow(url, url)
 
 				d.cx = 1
 				if len(d.rendered) > d.cy {
@@ -359,6 +391,17 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 					d.cy = len(d.rendered)
 					d.startoff = 0
 				}
+
+				d.LoadFeed(url)
+
+				d.SetBottomMessage(urlsListSectionMsg)
+
+				d.bottomBarColor = GREEN
+
+				d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
+
+				d.editingMode = false
+				d.editingBuf = []string{}
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
 			{
@@ -381,8 +424,10 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.SetBottomMessage(urlsListSectionMsg)
 				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
 
-				d.editing = false
+				d.editingMode = false
 				d.editingBuf = []string{}
+
+				d.bottomBarColor = WHITE
 
 				d.resetCoordinates()
 			}
@@ -408,12 +453,13 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		if d.currentSection == URLS_LIST {
 			log.Default().Println("live editing enabled")
 
-			d.editing = true
+			d.editingMode = true
 			d.editingBuf = []string{}
 
 			d.cy = d.height - 1
 			d.cx = 1
 
+			d.bottomBarColor = RED
 			d.SetBottomMessage("")
 		}
 
@@ -440,9 +486,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		d.MoveCursor(input)
 
 	case PAGE_UP, PAGE_DOWN:
-		{
-			// TODO impl scroll
-		}
+		d.Scroll(input)
 
 	case ENTER:
 		{
@@ -452,17 +496,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			case URLS_LIST:
 				d.LoadArticlesList(url)
 			case ARTICLES_LIST:
-				done := make(chan bool, 1)
-
-				go d.LoadArticleText(url, done)
-
-				select {
-				case <-done:
-					return
-				case <-time.After(1 * time.Second):
-					d.SetTmpBottomMessage(1*time.Second, "timeout fetching article text!")
-					return
-				}
+				d.LoadArticleText(url)
 			}
 		}
 
@@ -500,7 +534,7 @@ func (d *Display) RefreshScreen() {
 
 	// move cursor to (y,x)
 	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
-	if d.editing {
+	if d.editingMode {
 		// show cursor
 		buf.WriteString("\x1b[?25h")
 	}
@@ -517,6 +551,7 @@ func (d *Display) SetTmpBottomMessage(t time.Duration, msg string) {
 	d.SetBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
+			d.bottomBarColor = WHITE
 			d.SetBottomMessage(previous)
 		})
 	}()
@@ -583,12 +618,9 @@ func (d *Display) LoadURLs() error {
 
 				cachedFeed, present := cached[string(url)]
 				if !present {
-
-					d.raw = append(d.raw, url)
-					d.rendered = append(d.rendered, url)
+					d.AppendRow(string(url), string(url))
 				} else {
-					d.raw = append(d.raw, []byte(cachedFeed.Url))
-					d.rendered = append(d.rendered, []byte(cachedFeed.Title))
+					d.AppendRow(cachedFeed.Url, cachedFeed.Title)
 				}
 			}
 		}
@@ -684,8 +716,7 @@ func (d *Display) LoadArticlesList(url string) {
 			d.resetRows()
 
 			for _, item := range cachedFeed.Items {
-				d.raw = append(d.raw, []byte(item.Url))
-				d.rendered = append(d.rendered, []byte(util.RenderArticleRow(item.PubDate, item.Title)))
+				d.AppendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
 			d.resetCoordinates()
@@ -712,7 +743,7 @@ var client = http.Client{
 	Timeout: 3 * time.Second,
 }
 
-func (d *Display) LoadArticleText(url string, done chan bool) {
+func (d *Display) LoadArticleText(url string) {
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -755,13 +786,10 @@ func (d *Display) LoadArticleText(url string, done chan bool) {
 									if end > len(line) {
 										end = len(line)
 									}
-
-									d.raw = append(d.raw, []byte(line[i:end]))
-									d.rendered = append(d.rendered, []byte(line[i:end]))
+									d.AppendRow(line[i:end], line[i:end])
 								}
 							} else {
-								d.raw = append(d.raw, []byte(line))
-								d.rendered = append(d.rendered, []byte(line))
+								d.AppendRow(line, line)
 							}
 						}
 					}
@@ -777,23 +805,23 @@ func (d *Display) LoadArticleText(url string, done chan bool) {
 			}
 		}
 	}
-	done <- true
 }
 
 func (d *Display) Draw(buf *bytes.Buffer) {
 
-	//log.Default().Printf("len of rendered: %d", len(d.rendered))
-	d.endoff = (len(d.rendered) - 1)
-	//log.Default().Printf("before: from %d to %d\n", d.startoff, d.endoff)
-	if d.endoff >= (d.height - BOTTOM_PADDING) {
-		d.endoff = d.height - BOTTOM_PADDING - 1
+	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING) - 1
+	if nextEndOff > (len(d.rendered) - 1) {
+		d.endoff = (len(d.rendered) - 1)
+	} else {
+		d.endoff = nextEndOff
 	}
-	if d.endoff+d.startoff <= (len(d.rendered) - 1) {
-		d.endoff += d.startoff
-	}
-	//log.Default().Printf("after: from %d to %d\n", d.startoff, d.endoff)
 
-	//log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
+	renderedRowsNum := d.endoff - d.startoff + 1
+	if d.cy > renderedRowsNum {
+		d.cy = renderedRowsNum
+	}
+
+	log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
@@ -847,14 +875,9 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 
 	// inverted colors attribute
 	buf.WriteString("\x1b[7m")
-	if d.editing {
-		// red
-		buf.WriteString("\x1b[91m")
-	} else {
-		// white
-		buf.WriteString("\x1b[37m")
-	}
+	buf.WriteString(fmt.Sprintf("\x1b[%dm", d.bottomBarColor))
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
+
 	// attributes off
 	buf.WriteString("\x1b[m")
 	// default color
