@@ -6,6 +6,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// TODO use pkg.go.dev/golang.org/x/term for portability
+
 const (
 	TCIFLUSH  = 0
 	TCOFLUSH  = 1

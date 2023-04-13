@@ -367,8 +367,8 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			{
 				url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
-				// TODO extract this block in a func since too long
 				if err := util.AppendUrl(url); err != nil {
+
 					log.Default().Println(err)
 
 					var target *util.UrlAlreadyPresentErr
@@ -384,13 +384,8 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				d.AppendRow(url, url)
 
 				d.cx = 1
-				if len(d.rendered) > d.cy {
-					d.cy = d.height - BOTTOM_PADDING
-					d.startoff = len(d.rendered) - d.cy
-				} else {
-					d.cy = len(d.rendered)
-					d.startoff = 0
-				}
+				d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
+				d.startoff = (len(d.rendered) - 1) / (d.height - BOTTOM_PADDING) * (d.height - BOTTOM_PADDING)
 
 				d.LoadFeed(url)
 
@@ -451,16 +446,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ctrlPlus('a'), 'a':
 		if d.currentSection == URLS_LIST {
-			log.Default().Println("live editing enabled")
-
-			d.editingMode = true
-			d.editingBuf = []string{}
-
-			d.cy = d.height - 1
-			d.cx = 1
-
-			d.bottomBarColor = RED
-			d.SetBottomMessage("")
+			d.enterEditMode()
 		}
 
 	case ctrlPlus('R'), 'R':
@@ -579,6 +565,16 @@ func (d *Display) LoadCache() error {
 		}
 	}
 	return nil
+}
+
+func (d *Display) enterEditMode() {
+	log.Default().Println("live editing enabled")
+
+	d.editingMode = true
+	d.editingBuf = []string{}
+
+	d.bottomBarColor = RED
+	d.SetBottomMessage("")
 }
 
 func (d *Display) LoadURLs() error {
