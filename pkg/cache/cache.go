@@ -10,6 +10,7 @@ import (
 
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
+	"golang.org/x/exp/slices"
 )
 
 type Cache struct {
@@ -43,6 +44,14 @@ func NewFeed(url, title string) *Feed {
 		Url:   url,
 		Items: make([]*Item, 0),
 	}
+}
+
+func (f *Feed) GetItemsOrderedByDate() []*Item {
+
+	slices.SortFunc(f.Items, func(a, b *Item) bool {
+		return a.PubDate.After(b.PubDate)
+	})
+	return f.Items
 }
 
 type Item struct {

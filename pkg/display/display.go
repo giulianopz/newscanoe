@@ -715,7 +715,7 @@ func (d *Display) LoadArticlesList(url string) {
 
 			d.resetRows()
 
-			for _, item := range cachedFeed.Items {
+			for _, item := range cachedFeed.GetItemsOrderedByDate() {
 				d.AppendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
