@@ -23,9 +23,10 @@ Supported key bindings:
 - `ENTER`, go into the currently highlighted element
 - `l`, open an article with `lynx` if installed in the system 
 - `o`, open an article with the default browser for the user's desktop environment
-- `^`, `v`, move the cursor across the text
+- `^`, `v`, move the cursor to the previous/next row
+- `Page Up`, `Page Down`, move the cursor to the previous/next page
 - `a`, insert manually a new feed url, then:
-    - `<`, `>`, move the cursor across the text
+    - `<`, `>`, move the cursor to the previous/next char
     - `BACKSPACE`, cancel last char
     - `CANC`, cancel currently highlighted char
     - `ENTER`, append the typed in url in the config file
