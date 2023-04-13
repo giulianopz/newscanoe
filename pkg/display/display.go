@@ -333,6 +333,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 			if d.cx > 1 {
 				d.cx--
 			}
+
 		case input == ARROW_RIGHT:
 			if d.cx < len(d.editingBuf)+1 {
 				d.cx++
@@ -340,14 +341,9 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 		case input == DEL_KEY:
 			{
-
 				i := d.cx - 1
 				if i < len(d.editingBuf) {
-
-					copy(d.editingBuf[i:], d.editingBuf[i+1:])
-					d.editingBuf[len(d.editingBuf)-1] = ""
-					d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
-
+					d.deleteCharAt(i)
 					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
 				}
 			}
@@ -355,75 +351,29 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 		case input == BACKSPACE:
 			{
 				if len(d.editingBuf) != 0 && d.cx == len(d.editingBuf)+1 {
-					d.editingBuf[len(d.editingBuf)-1] = ""
-					d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
-
-					d.cx--
-
+					d.deleteCharAt(len(d.editingBuf) - 1)
 					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+					d.cx--
 				}
 			}
 		case input == ENTER:
 			{
-				url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
-
-				if err := util.AppendUrl(url); err != nil {
-
-					log.Default().Println(err)
-
-					var target *util.UrlAlreadyPresentErr
-					if errors.As(err, &target) {
-						d.SetTmpBottomMessage(3*time.Second, err.Error())
-						return
-					}
-
-					d.SetTmpBottomMessage(3*time.Second, "cannot save url in config file!")
-					return
-				}
-
-				d.AppendRow(url, url)
-
-				d.cx = 1
-				d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
-				d.startoff = (len(d.rendered) - 1) / (d.height - BOTTOM_PADDING) * (d.height - BOTTOM_PADDING)
-
-				d.LoadFeed(url)
-
-				d.SetBottomMessage(urlsListSectionMsg)
-
-				d.bottomBarColor = GREEN
-
-				d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
-
-				d.editingMode = false
-				d.editingBuf = []string{}
+				d.AddEnteredFeedUrl()
 			}
 		case isLetter(input), isDigit(input), isSpecialChar(input):
 			{
 				if d.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
-
 					i := d.cx - 1
-					if i == len(d.editingBuf) {
-						d.editingBuf = append(d.editingBuf, string(input))
-					} else {
-						d.editingBuf = append(d.editingBuf[:i+1], d.editingBuf[i:]...)
-						d.editingBuf[i] = string(input)
-					}
-					d.cx++
-
+					d.insertCharAt(string(input), i)
 					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+					d.cx++
 				}
 			}
 		case input == QUIT:
 			{
 				d.SetBottomMessage(urlsListSectionMsg)
 				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
-
-				d.editingMode = false
-				d.editingBuf = []string{}
-
-				d.bottomBarColor = WHITE
-
+				d.exitEditingMode(WHITE)
 				d.resetCoordinates()
 			}
 		default:
@@ -505,6 +455,63 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	}
 }
 
+func (d *Display) AddEnteredFeedUrl() {
+
+	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
+	if err := d.isValidFeedUrl(url); err != nil {
+		d.bottomBarColor = RED
+		d.SetTmpBottomMessage(3*time.Second, "feed url not valid!")
+		return
+	}
+
+	if err := util.AppendUrl(url); err != nil {
+
+		log.Default().Println(err)
+
+		var target *util.UrlAlreadyPresentErr
+		if errors.As(err, &target) {
+			d.bottomBarColor = RED
+			d.SetTmpBottomMessage(3*time.Second, err.Error())
+			return
+		}
+		d.bottomBarColor = RED
+		d.SetTmpBottomMessage(3*time.Second, "cannot save url in config file!")
+		return
+	}
+
+	d.AppendRow(url, url)
+
+	d.cx = 1
+	d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
+	d.startoff = (len(d.rendered) - 1) / (d.height - BOTTOM_PADDING) * (d.height - BOTTOM_PADDING)
+
+	d.LoadFeed(url)
+
+	d.SetBottomMessage(urlsListSectionMsg)
+	d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
+	d.exitEditingMode(GREEN)
+}
+
+func (d *Display) insertCharAt(c string, i int) {
+	if i == len(d.editingBuf) {
+		d.editingBuf = append(d.editingBuf, c)
+	} else {
+		d.editingBuf = append(d.editingBuf[:i+1], d.editingBuf[i:]...)
+		d.editingBuf[i] = c
+	}
+}
+
+func (d *Display) deleteCharAt(i int) {
+	if i == len(d.editingBuf)-1 {
+		d.editingBuf[len(d.editingBuf)-1] = ""
+		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
+	} else {
+		copy(d.editingBuf[i:], d.editingBuf[i+1:])
+		d.editingBuf[len(d.editingBuf)-1] = ""
+		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
+	}
+}
+
 func (d *Display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
@@ -567,13 +574,21 @@ func (d *Display) LoadCache() error {
 	return nil
 }
 
+func (d *Display) exitEditingMode(color int) {
+	d.editingMode = false
+	d.editingBuf = []string{}
+	d.bottomBarColor = color
+}
+
 func (d *Display) enterEditMode() {
 	log.Default().Println("live editing enabled")
 
 	d.editingMode = true
 	d.editingBuf = []string{}
 
-	d.bottomBarColor = RED
+	d.cy = d.height - 1
+	d.cx = 1
+
 	d.SetBottomMessage("")
 }
 
@@ -629,10 +644,15 @@ func (d *Display) LoadURLs() error {
 	return nil
 }
 
-func (d *Display) LoadFeed(url string) {
+func (d *Display) isValidFeedUrl(url string) error {
+	if _, err := gofeed.NewParser().ParseURL(url); err != nil {
+		return err
+	}
+	return nil
+}
 
-	fp := gofeed.NewParser()
-	parsedFeed, err := fp.ParseURL(url)
+func (d *Display) LoadFeed(url string) {
+	parsedFeed, err := gofeed.NewParser().ParseURL(url)
 	if err != nil {
 		log.Default().Println(err)
 		d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
@@ -812,16 +832,18 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 		d.endoff = nextEndOff
 	}
 
-	renderedRowsNum := d.endoff - d.startoff + 1
-	if d.cy > renderedRowsNum {
-		d.cy = renderedRowsNum
+	if !d.editingMode {
+		renderedRowsNum := d.endoff - d.startoff + 1
+		if d.cy > renderedRowsNum {
+			d.cy = renderedRowsNum
+		}
 	}
 
 	log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
-		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
+		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
 			// inverted colors attribute
 			buf.WriteString("\x1b[7m")
 			// white
