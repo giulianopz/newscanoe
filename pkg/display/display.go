@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -73,6 +74,8 @@ type display struct {
 
 	// previous state of the terminal
 	origTermios unix.Termios
+
+	mu sync.Mutex
 	// dislay raw text
 	raw [][]byte
 	// dislay rendered text
@@ -444,6 +447,9 @@ func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 func (d *display) addEnteredFeedUrl() {
 
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 	if err := d.isValidFeedUrl(url); err != nil {
 		d.bottomBarColor = escape.RED
@@ -578,6 +584,9 @@ func (d *display) enterEditingMode() {
 
 func (d *display) loadURLs() error {
 
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	d.resetRows()
 
 	filePath, err := util.GetUrlsFilePath()
@@ -636,6 +645,10 @@ func (d *display) isValidFeedUrl(url string) error {
 }
 
 func (d *display) loadFeed(url string) {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	parsedFeed, err := gofeed.NewParser().ParseURL(url)
 	if err != nil {
 		log.Default().Println(err)
@@ -662,6 +675,9 @@ func (d *display) loadFeed(url string) {
 }
 
 func (d *display) loadAllFeeds() {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	origMsg := d.bottomBarMsg
 
@@ -705,6 +721,9 @@ func (d *display) loadAllFeeds() {
 
 func (d *display) loadArticlesList(url string) {
 
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
 
@@ -744,6 +763,9 @@ var client = http.Client{
 }
 
 func (d *display) loadArticleText(url string) {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -793,15 +815,15 @@ func (d *display) loadArticleText(url string) {
 							}
 						}
 					}
+
+					d.resetCoordinates()
+
+					d.currentArticleUrl = url
+					d.currentSection = ARTICLE_TEXT
+
+					d.setBottomMessage(articleTextSectionMsg)
+					break
 				}
-
-				d.resetCoordinates()
-
-				d.currentArticleUrl = url
-				d.currentSection = ARTICLE_TEXT
-
-				d.setBottomMessage(articleTextSectionMsg)
-				break
 			}
 		}
 	}
