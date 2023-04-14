@@ -8,26 +8,26 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/giulianopz/newscanoe/pkg/ascii"
 	"github.com/giulianopz/newscanoe/pkg/cache"
+	"github.com/giulianopz/newscanoe/pkg/escape"
 	"github.com/giulianopz/newscanoe/pkg/termios"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
-	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
 )
 
 var DebugMode bool
 
 const (
-	// keys
-	ENTER      = 13
-	BACKSPACE  = 127
+	/* keys */
+
 	ARROW_LEFT = iota
 	ARROW_RIGHT
 	ARROW_UP
@@ -38,11 +38,14 @@ const (
 	PAGE_UP
 	PAGE_DOWN
 	QUIT
-	// sections
+
+	/* display sections */
+
 	URLS_LIST = iota
 	ARTICLES_LIST
 	ARTICLE_TEXT
-	//
+
+	// num of lines reserved to bottom bar plus final empty row
 	BOTTOM_PADDING = 3
 	// colors
 	WHITE = 37
@@ -56,7 +59,7 @@ const (
 	articleTextSectionMsg  = "HELP: Backspace = go back"
 )
 
-type Display struct {
+type display struct {
 	// cursor's position within terminal window
 	cx int
 	cy int
@@ -75,6 +78,8 @@ type Display struct {
 
 	// previous state of the terminal
 	origTermios unix.Termios
+
+	mu sync.Mutex
 	// dislay raw text
 	raw [][]byte
 	// dislay rendered text
@@ -88,54 +93,60 @@ type Display struct {
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
+
+	Quitting bool
 }
 
-func New(in uintptr) *Display {
-	d := &Display{
+func New(in uintptr) *display {
+	d := &display{
 		cx:             1,
 		cy:             1,
 		startoff:       0,
 		endoff:         0,
 		cache:          cache.NewCache(),
-		bottomBarColor: WHITE,
+		bottomBarColor: escape.WHITE,
 	}
 
 	d.SetWindowSize(in)
 
-	if err := d.LoadCache(); err != nil {
+	if err := d.loadCache(); err != nil {
 		log.Panicln(err)
 	}
 
-	if err := d.LoadURLs(); err != nil {
+	if err := d.loadURLs(); err != nil {
 		log.Panicln(err)
 	}
 
 	return d
 }
 
-func (d *Display) Quit(quitC chan bool) {
-	fmt.Fprint(os.Stdout, "\x1b[?25h")
-	fmt.Fprint(os.Stdout, "\x1b[2J")
-	fmt.Fprint(os.Stdout, "\x1b[H")
+func (d *display) Quit(quitC chan bool) {
+
+	log.Default().Println("quitting")
+	d.Quitting = true
+
+	fmt.Fprint(os.Stdout, escape.SHOW_CURSOR)
+	fmt.Fprint(os.Stdout, escape.ERASE_ENTIRE_SCREEN)
+	fmt.Fprint(os.Stdout, escape.MoveCursor(1, 1))
 	quitC <- true
 }
 
-func (d *Display) AppendRow(raw, rendered string) {
+func (d *display) appendRow(raw, rendered string) {
 	d.raw = append(d.raw, []byte(raw))
 	d.rendered = append(d.rendered, []byte(rendered))
 }
 
-func (d *Display) currentRow() int {
+func (d *display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
 
-func (d *Display) resetCoordinates() {
+func (d *display) resetCoordinates() {
 	d.cy = 1
 	d.cx = 1
 	d.startoff = 0
 }
 
-func (d *Display) resetRows() {
+func (d *display) resetRows() {
 	d.raw = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 }
@@ -144,7 +155,7 @@ func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
 
-func (d *Display) MoveCursor(dir byte) {
+func (d *display) moveCursor(dir byte) {
 	switch dir {
 	/* case ARROW_LEFT:
 		if d.cx > 1 {
@@ -179,11 +190,12 @@ func (d *Display) MoveCursor(dir byte) {
 	}
 }
 
-func (d *Display) Scroll(dir byte) {
+func (d *display) scroll(dir byte) {
 	switch dir {
 	case PAGE_DOWN:
 		{
 			if d.endoff == len(d.rendered)-1 {
+				d.cy = d.height - BOTTOM_PADDING
 				return
 			}
 
@@ -200,6 +212,7 @@ func (d *Display) Scroll(dir byte) {
 	case PAGE_UP:
 		{
 			if d.startoff == 0 {
+				d.cy = 1
 				return
 			}
 
@@ -228,8 +241,7 @@ func readKeyStroke(fd uintptr) byte {
 		}
 		log.Default().Printf("1st keystroke byte: %v", input)
 
-		// 27 (ESC)
-		if input[0] == '\x1b' {
+		if input[0] == ascii.ESC {
 
 			seq := make([]byte, 3)
 
@@ -287,9 +299,9 @@ func readKeyStroke(fd uintptr) byte {
 			} else if seq[0] == 'O' { // 79
 
 				switch seq[1] {
-				case 'H':
+				case 'H': // 72
 					return HOME_KEY
-				case 'F':
+				case 'F': // 70
 					return END_KEY
 				}
 			}
@@ -300,27 +312,7 @@ func readKeyStroke(fd uintptr) byte {
 	}
 }
 
-func isLetter(input byte) bool {
-	return (input >= 'A' && input <= 'Z') || (input >= 'a' && input <= 'z')
-}
-
-func isDigit(input byte) bool {
-	return input >= '0' && input <= '9'
-}
-
-var specialChars = []byte{
-	';', ',', '/', '?', ':', '@', '&', '=', '+', '$', '-', '_', '.', '!', '~', '*', '(', ')', '#', 96,
-}
-
-/*
-isSpecialChar returns if a given input char is a reserved char as per RFC 3986
-see paragraph 2.2: https://www.ietf.org/rfc/rfc3986.txt
-*/
-func isSpecialChar(input byte) bool {
-	return slices.Contains(specialChars, input)
-}
-
-func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
+func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	input := readKeyStroke(fd)
 
@@ -344,36 +336,36 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 				i := d.cx - 1
 				if i < len(d.editingBuf) {
 					d.deleteCharAt(i)
-					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+					d.setBottomMessage(strings.Join(d.editingBuf, ""))
 				}
 			}
 
-		case input == BACKSPACE:
+		case input == ascii.BACKSPACE:
 			{
 				if len(d.editingBuf) != 0 && d.cx == len(d.editingBuf)+1 {
 					d.deleteCharAt(len(d.editingBuf) - 1)
-					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+					d.setBottomMessage(strings.Join(d.editingBuf, ""))
 					d.cx--
 				}
 			}
-		case input == ENTER:
+		case input == ascii.ENTER:
 			{
-				d.AddEnteredFeedUrl()
+				d.addEnteredFeedUrl()
 			}
-		case isLetter(input), isDigit(input), isSpecialChar(input):
+		case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 			{
 				if d.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
 					i := d.cx - 1
 					d.insertCharAt(string(input), i)
-					d.SetBottomMessage(strings.Join(d.editingBuf, ""))
+					d.setBottomMessage(strings.Join(d.editingBuf, ""))
 					d.cx++
 				}
 			}
 		case input == QUIT:
 			{
-				d.SetBottomMessage(urlsListSectionMsg)
-				d.SetTmpBottomMessage(1*time.Second, "editing aborted!")
-				d.exitEditingMode(WHITE)
+				d.setBottomMessage(urlsListSectionMsg)
+				d.setTmpBottomMessage(1*time.Second, "editing aborted!")
+				d.exitEditingMode(escape.WHITE)
 				d.resetCoordinates()
 			}
 		default:
@@ -391,59 +383,63 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	case ctrlPlus('r'), 'r':
 		if d.currentSection == URLS_LIST {
-			d.LoadFeed(string(d.raw[d.currentRow()]))
+			d.loadFeed(string(d.raw[d.currentRow()]))
 		}
 
 	case ctrlPlus('a'), 'a':
 		if d.currentSection == URLS_LIST {
-			d.enterEditMode()
+			d.enterEditingMode()
 		}
 
 	case ctrlPlus('R'), 'R':
 		if d.currentSection == URLS_LIST {
-			d.LoadAllFeeds()
+			d.loadAllFeeds()
 		}
 
 	case ctrlPlus('o'), 'o':
 		if d.currentSection == ARTICLES_LIST {
-			if !headless() {
-				d.openWithBrowser(string(d.raw[d.currentRow()]))
+			if !util.IsHeadless() {
+				if err := util.OpenWithBrowser(string(d.raw[d.currentRow()])); err != nil {
+					d.setTmpBottomMessage(1*time.Second, err.Error())
+				}
 			}
 		}
 
 	case ctrlPlus('l'), 'l':
 		if d.currentSection == ARTICLES_LIST {
-			if isLynxPresent() {
-				d.openWithLynx(string(d.raw[d.currentRow()]))
+			if util.IsLynxPresent() {
+				if err := util.OpenWithLynx(string(d.raw[d.currentRow()])); err != nil {
+					d.setTmpBottomMessage(1*time.Second, err.Error())
+				}
 			}
 		}
 
 	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
-		d.MoveCursor(input)
+		d.moveCursor(input)
 
 	case PAGE_UP, PAGE_DOWN:
-		d.Scroll(input)
+		d.scroll(input)
 
-	case ENTER:
+	case ascii.ENTER:
 		{
 			url := string(d.raw[d.currentRow()])
 
 			switch d.currentSection {
 			case URLS_LIST:
-				d.LoadArticlesList(url)
+				d.loadArticlesList(url)
 			case ARTICLES_LIST:
-				d.LoadArticleText(url)
+				d.loadArticleText(url)
 			}
 		}
 
-	case BACKSPACE:
+	case ascii.BACKSPACE:
 		{
 			switch d.currentSection {
 			case ARTICLES_LIST:
-				d.LoadURLs()
+				d.loadURLs()
 				d.currentFeedUrl = ""
 			case ARTICLE_TEXT:
-				d.LoadArticlesList(d.currentFeedUrl)
+				d.loadArticlesList(d.currentFeedUrl)
 				d.currentArticleUrl = ""
 			}
 		}
@@ -455,44 +451,43 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	}
 }
 
-func (d *Display) AddEnteredFeedUrl() {
+func (d *display) addEnteredFeedUrl() {
 
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 	if err := d.isValidFeedUrl(url); err != nil {
-		d.bottomBarColor = RED
-		d.SetTmpBottomMessage(3*time.Second, "feed url not valid!")
+		d.bottomBarColor = escape.RED
+		d.setTmpBottomMessage(3*time.Second, "feed url not valid!")
 		return
 	}
 
 	if err := util.AppendUrl(url); err != nil {
-
 		log.Default().Println(err)
+
+		d.bottomBarColor = escape.RED
 
 		var target *util.UrlAlreadyPresentErr
 		if errors.As(err, &target) {
-			d.bottomBarColor = RED
-			d.SetTmpBottomMessage(3*time.Second, err.Error())
+			d.setTmpBottomMessage(3*time.Second, err.Error())
 			return
 		}
-		d.bottomBarColor = RED
-		d.SetTmpBottomMessage(3*time.Second, "cannot save url in config file!")
+		d.setTmpBottomMessage(3*time.Second, "cannot save url in config file!")
 		return
 	}
 
-	d.AppendRow(url, url)
+	d.appendRow(url, url)
 
 	d.cx = 1
 	d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
 	d.startoff = (len(d.rendered) - 1) / (d.height - BOTTOM_PADDING) * (d.height - BOTTOM_PADDING)
 
-	d.LoadFeed(url)
+	d.loadFeed(url)
 
-	d.SetBottomMessage(urlsListSectionMsg)
-	d.SetTmpBottomMessage(3*time.Second, "new feed saved!")
-	d.exitEditingMode(GREEN)
+	d.setBottomMessage(urlsListSectionMsg)
+	d.setTmpBottomMessage(3*time.Second, "new feed saved!")
+	d.exitEditingMode(escape.GREEN)
 }
 
-func (d *Display) insertCharAt(c string, i int) {
+func (d *display) insertCharAt(c string, i int) {
 	if i == len(d.editingBuf) {
 		d.editingBuf = append(d.editingBuf, c)
 	} else {
@@ -501,7 +496,7 @@ func (d *Display) insertCharAt(c string, i int) {
 	}
 }
 
-func (d *Display) deleteCharAt(i int) {
+func (d *display) deleteCharAt(i int) {
 	if i == len(d.editingBuf)-1 {
 		d.editingBuf[len(d.editingBuf)-1] = ""
 		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
@@ -512,45 +507,42 @@ func (d *Display) deleteCharAt(i int) {
 	}
 }
 
-func (d *Display) RefreshScreen() {
+func (d *display) RefreshScreen() {
+
+	log.Default().Println("refreshing screen")
 
 	buf := &bytes.Buffer{}
 
-	// erase entire screen
-	buf.WriteString("\x1b[2J")
+	buf.WriteString(escape.ERASE_ENTIRE_SCREEN)
+	buf.WriteString(escape.HIDE_CURSOR)
+	buf.WriteString(escape.MoveCursor(1, 1))
 
-	// hide cursor
-	buf.WriteString("\x1b[?25l")
-	buf.WriteString("\x1b[H")
+	d.draw(buf)
 
-	d.Draw(buf)
-
-	// move cursor to (y,x)
-	buf.WriteString(fmt.Sprintf("\x1b[%d;%dH", d.cy, d.cx))
+	buf.WriteString(escape.MoveCursor(d.cy, d.cx))
 	if d.editingMode {
-		// show cursor
-		buf.WriteString("\x1b[?25h")
+		buf.WriteString(escape.SHOW_CURSOR)
 	}
 
 	fmt.Fprint(os.Stdout, buf)
 }
 
-func (d *Display) SetBottomMessage(msg string) {
+func (d *display) setBottomMessage(msg string) {
 	d.bottomBarMsg = msg
 }
 
-func (d *Display) SetTmpBottomMessage(t time.Duration, msg string) {
+func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	previous := d.bottomBarMsg
-	d.SetBottomMessage(msg)
+	d.setBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.bottomBarColor = WHITE
-			d.SetBottomMessage(previous)
+			d.bottomBarColor = escape.WHITE
+			d.setBottomMessage(previous)
 		})
 	}()
 }
 
-func (d *Display) SetWindowSize(fd uintptr) error {
+func (d *display) SetWindowSize(fd uintptr) error {
 	w, h, err := termios.GetWindowSize(int(fd))
 	if err != nil {
 		return err
@@ -560,7 +552,7 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 	return nil
 }
 
-func (d *Display) LoadCache() error {
+func (d *display) loadCache() error {
 	cachePath, err := util.GetCacheFilePath()
 	if err != nil {
 		return err
@@ -574,13 +566,13 @@ func (d *Display) LoadCache() error {
 	return nil
 }
 
-func (d *Display) exitEditingMode(color int) {
+func (d *display) exitEditingMode(color int) {
 	d.editingMode = false
 	d.editingBuf = []string{}
 	d.bottomBarColor = color
 }
 
-func (d *Display) enterEditMode() {
+func (d *display) enterEditingMode() {
 	log.Default().Println("live editing enabled")
 
 	d.editingMode = true
@@ -589,10 +581,13 @@ func (d *Display) enterEditMode() {
 	d.cy = d.height - 1
 	d.cx = 1
 
-	d.SetBottomMessage("")
+	d.setBottomMessage("")
 }
 
-func (d *Display) LoadURLs() error {
+func (d *display) loadURLs() error {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	d.resetRows()
 
@@ -613,7 +608,7 @@ func (d *Display) LoadURLs() error {
 	}
 
 	if empty && len(d.cache.GetFeeds()) == 0 {
-		d.SetBottomMessage("no feed url: type 'a' to add one now")
+		d.setBottomMessage("no feed url: type 'a' to add one now")
 	} else {
 		cached := make(map[string]*cache.Feed, 0)
 
@@ -629,13 +624,13 @@ func (d *Display) LoadURLs() error {
 
 				cachedFeed, present := cached[string(url)]
 				if !present {
-					d.AppendRow(string(url), string(url))
+					d.appendRow(string(url), string(url))
 				} else {
-					d.AppendRow(cachedFeed.Url, cachedFeed.Title)
+					d.appendRow(cachedFeed.Url, cachedFeed.Title)
 				}
 			}
 		}
-		d.SetBottomMessage(urlsListSectionMsg)
+		d.setBottomMessage(urlsListSectionMsg)
 	}
 
 	d.cy = 1
@@ -644,18 +639,22 @@ func (d *Display) LoadURLs() error {
 	return nil
 }
 
-func (d *Display) isValidFeedUrl(url string) error {
+func (d *display) isValidFeedUrl(url string) error {
 	if _, err := gofeed.NewParser().ParseURL(url); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *Display) LoadFeed(url string) {
+func (d *display) loadFeed(url string) {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	parsedFeed, err := gofeed.NewParser().ParseURL(url)
 	if err != nil {
 		log.Default().Println(err)
-		d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
+		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
 		return
 	}
 
@@ -663,7 +662,7 @@ func (d *Display) LoadFeed(url string) {
 
 	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
-		d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
+		d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 		return
 	}
 
@@ -677,7 +676,10 @@ func (d *Display) LoadFeed(url string) {
 	}()
 }
 
-func (d *Display) LoadAllFeeds() {
+func (d *display) loadAllFeeds() {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	origMsg := d.bottomBarMsg
 
@@ -691,7 +693,7 @@ func (d *Display) LoadAllFeeds() {
 		parsedFeed, err := fp.ParseURL(url)
 		if err != nil {
 			log.Default().Println(err)
-			d.SetTmpBottomMessage(3*time.Second, "cannot parse feed!")
+			d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
 			return
 		}
 
@@ -699,17 +701,17 @@ func (d *Display) LoadAllFeeds() {
 
 		if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 			log.Default().Println(err)
-			d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
+			d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 			return
 		}
 
 		d.rendered[id] = []byte(title)
 
-		d.SetBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.raw)))
+		d.setBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.raw)))
 		d.RefreshScreen()
 	}
 
-	d.SetBottomMessage(origMsg)
+	d.setBottomMessage(origMsg)
 
 	go func() {
 		if err := d.cache.Encode(); err != nil {
@@ -719,20 +721,23 @@ func (d *Display) LoadAllFeeds() {
 
 }
 
-func (d *Display) LoadArticlesList(url string) {
+func (d *display) loadArticlesList(url string) {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
 
 			if len(cachedFeed.Items) == 0 {
-				d.SetTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
+				d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
 				return
 			}
 
 			d.resetRows()
 
 			for _, item := range cachedFeed.GetItemsOrderedByDate() {
-				d.AppendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
+				d.appendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
 			d.resetCoordinates()
@@ -741,16 +746,16 @@ func (d *Display) LoadArticlesList(url string) {
 			d.currentFeedUrl = url
 
 			var browserHelp string
-			if !headless() {
+			if !util.IsHeadless() {
 				browserHelp = " | o = open with browser"
 			}
 
 			var lynxHelp string
-			if isLynxPresent() {
+			if util.IsLynxPresent() {
 				lynxHelp = " | l = open with lynx"
 			}
 
-			d.SetBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
+			d.setBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
 		}
 	}
 }
@@ -759,7 +764,10 @@ var client = http.Client{
 	Timeout: 3 * time.Second,
 }
 
-func (d *Display) LoadArticleText(url string) {
+func (d *display) loadArticleText(url string) {
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -771,7 +779,7 @@ func (d *Display) LoadArticleText(url string) {
 					resp, err := client.Get(i.Url)
 					if err != nil {
 						log.Default().Println(err)
-						d.SetTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
+						d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
 						return
 					}
 					defer resp.Body.Close()
@@ -780,7 +788,7 @@ func (d *Display) LoadArticleText(url string) {
 					markdown, err := converter.ConvertReader(resp.Body)
 					if err != nil {
 						log.Default().Println(err)
-						d.SetTmpBottomMessage(3*time.Second, "cannot parse article text!")
+						d.setTmpBottomMessage(3*time.Second, "cannot parse article text!")
 						return
 					}
 
@@ -802,28 +810,28 @@ func (d *Display) LoadArticleText(url string) {
 									if end > len(line) {
 										end = len(line)
 									}
-									d.AppendRow(line[i:end], line[i:end])
+									d.appendRow(line[i:end], line[i:end])
 								}
 							} else {
-								d.AppendRow(line, line)
+								d.appendRow(line, line)
 							}
 						}
 					}
+
+					d.resetCoordinates()
+
+					d.currentArticleUrl = url
+					d.currentSection = ARTICLE_TEXT
+
+					d.setBottomMessage(articleTextSectionMsg)
+					break
 				}
-
-				d.resetCoordinates()
-
-				d.currentArticleUrl = url
-				d.currentSection = ARTICLE_TEXT
-
-				d.SetBottomMessage(articleTextSectionMsg)
-				break
 			}
 		}
 	}
 }
 
-func (d *Display) Draw(buf *bytes.Buffer) {
+func (d *display) draw(buf *bytes.Buffer) {
 
 	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING) - 1
 	if nextEndOff > (len(d.rendered) - 1) {
@@ -844,10 +852,8 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			// inverted colors attribute
-			buf.WriteString("\x1b[7m")
-			// white
-			buf.WriteString("\x1b[37m")
+			buf.WriteString(escape.REVERSE_COLOR)
+			buf.WriteString(escape.SelectGraphicRendition(escape.WHITE))
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
@@ -865,10 +871,8 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 		}
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
-			// attributes off
-			buf.WriteString("\x1b[m")
-			// default color
-			buf.WriteString("\x1b[39m")
+			buf.WriteString(escape.ATTRIBUTES_OFF)
+			buf.WriteString(escape.DEFAULT_FG_COLOR)
 		}
 
 		buf.WriteString("\r\n")
@@ -891,68 +895,10 @@ func (d *Display) Draw(buf *bytes.Buffer) {
 	}
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 
-	// inverted colors attribute
-	buf.WriteString("\x1b[7m")
-	buf.WriteString(fmt.Sprintf("\x1b[%dm", d.bottomBarColor))
+	buf.WriteString(escape.REVERSE_COLOR)
+	buf.WriteString(escape.SelectGraphicRendition(d.bottomBarColor))
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
 
-	// attributes off
-	buf.WriteString("\x1b[m")
-	// default color
-	buf.WriteString("\x1b[39m")
-}
-
-/*
-openWithBrowser opens the selected article with the default browser for desktop environment.
-The environment variable DISPLAY is used to detect if the app is running on a headless machine.
-see: https://wiki.debian.org/DefaultWebBrowser
-*/
-func (d *Display) openWithBrowser(url string) {
-
-	if url != "" {
-		err := exec.Command("xdg-open", url).Run()
-		if err != nil {
-			switch e := err.(type) {
-			case *exec.Error:
-				d.SetBottomMessage(fmt.Sprintf("failed executing: %v", err))
-			case *exec.ExitError:
-				d.SetBottomMessage(fmt.Sprintf("command exit with code: %v", e.ExitCode()))
-			default:
-				panic(err)
-			}
-		}
-	}
-}
-
-// headless detects if this is a headless machine by looking up the DISPLAY environment variable
-func headless() bool {
-	displayVar, set := os.LookupEnv("DISPLAY")
-	log.Default().Printf("DISPLAY=%s", displayVar)
-	return !set || displayVar == ""
-}
-
-func isLynxPresent() bool {
-	path, err := exec.LookPath("lynx")
-	log.Default().Printf("lynx=%s", path)
-	return err == nil && path != ""
-}
-
-/*
-openWithLynx opens the selected article with lynx.
-see: https://lynx.invisible-island.net/
-*/
-func (d *Display) openWithLynx(url string) {
-
-	cmd := exec.Command("lynx", url)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		log.Default().Println(err)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		log.Default().Println(err)
-	}
+	buf.WriteString(escape.ATTRIBUTES_OFF)
+	buf.WriteString(escape.DEFAULT_FG_COLOR)
 }

@@ -129,11 +129,13 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		if cachedFeed.Url == url {
 
 			cachedFeed.Title = title
+			cachedFeed.Items = make([]*Item, 0)
+
 			for _, parsedItem := range parsedFeed.Items {
 				cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
 				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
 			}
-			log.Default().Printf("cached feed with url: %s\n", url)
+			log.Default().Printf("refreshed cached feed with url: %s\n", url)
 			return nil
 		}
 	}
@@ -144,6 +146,7 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		newFeed.Items = append(newFeed.Items, cachedItem)
 	}
 	c.feeds = append(c.feeds, newFeed)
+	log.Default().Printf("cached a new feed with url: %s\n", url)
 
 	return nil
 }
