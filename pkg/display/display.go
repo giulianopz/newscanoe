@@ -464,16 +464,15 @@ func (d *display) addEnteredFeedUrl() {
 	}
 
 	if err := util.AppendUrl(url); err != nil {
-
 		log.Default().Println(err)
+
+		d.bottomBarColor = escape.RED
 
 		var target *util.UrlAlreadyPresentErr
 		if errors.As(err, &target) {
-			d.bottomBarColor = escape.RED
 			d.setTmpBottomMessage(3*time.Second, err.Error())
 			return
 		}
-		d.bottomBarColor = escape.RED
 		d.setTmpBottomMessage(3*time.Second, "cannot save url in config file!")
 		return
 	}
