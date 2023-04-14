@@ -8,48 +8,21 @@ import (
 
 // TODO use pkg.go.dev/golang.org/x/term for portability
 
-const (
-	TCIFLUSH  = 0
-	TCOFLUSH  = 1
-	TCIOFLUSH = 2
-
-	TCSANOW   = 0
-	TCSADRAIN = 1
-	TCSAFLUSH = 2
-)
-
-func tcgetattr(fd uintptr) (*unix.Termios, error) {
-	return unix.IoctlGetTermios(int(fd), unix.TCGETS)
-}
-
-func tcsetattr(fd, action uintptr, t *unix.Termios) error {
-	var request uintptr
-	switch action {
-	case TCSANOW:
-		request = unix.TCSETS
-	case TCSADRAIN:
-		request = unix.TCSETSW
-	case TCSAFLUSH:
-		request = unix.TCSETS
-	default:
-		return unix.EINVAL
-	}
-	return unix.IoctlSetTermios(int(fd), uint(request), t)
-}
-
-func DisableRawMode(fd uintptr, orig_termios unix.Termios) {
-	if err := tcsetattr(fd, TCSAFLUSH, &orig_termios); err != nil {
+func DisableRawMode(fd uintptr, previousState unix.Termios) {
+	log.Default().Println("disabling raw mode")
+	if err := unix.IoctlSetTermios(int(fd), unix.TCSETS, &previousState); err != nil {
 		log.Panicf("cannot set attr: %v", err)
 	}
 }
 
 func EnableRawMode(fd uintptr) unix.Termios {
-	termios, err := tcgetattr(fd)
+	log.Default().Println("enabling raw mode")
+	termios, err := unix.IoctlGetTermios(int(fd), unix.TCGETS)
 	if err != nil {
 		log.Panicf("cannot get attr: %v", err)
 	}
 
-	var origTermios unix.Termios = *termios
+	var previousState unix.Termios = *termios
 
 	termios.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
 	termios.Oflag &^= unix.OPOST
@@ -58,10 +31,10 @@ func EnableRawMode(fd uintptr) unix.Termios {
 	termios.Cflag |= unix.CS8
 	termios.Cc[unix.VMIN] = 1
 	termios.Cc[unix.VTIME] = 0
-	if err := tcsetattr(fd, TCSAFLUSH, termios); err != nil {
+	if err := unix.IoctlSetTermios(int(fd), unix.TCSETS, termios); err != nil {
 		log.Panicf("cannot set attr: %v", err)
 	}
-	return origTermios
+	return previousState
 }
 
 func GetWindowSize(fd int) (width, height int, err error) {

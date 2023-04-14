@@ -86,6 +86,8 @@ type display struct {
 	currentSection    int
 	currentArticleUrl string
 	currentFeedUrl    string
+
+	Quitting bool
 }
 
 func New(in uintptr) *display {
@@ -112,6 +114,10 @@ func New(in uintptr) *display {
 }
 
 func (d *display) Quit(quitC chan bool) {
+
+	log.Default().Println("quitting")
+	d.Quitting = true
+
 	fmt.Fprint(os.Stdout, escape.SHOW_CURSOR)
 	fmt.Fprint(os.Stdout, escape.ERASE_ENTIRE_SCREEN)
 	fmt.Fprint(os.Stdout, escape.MoveCursor(1, 1))
@@ -494,6 +500,8 @@ func (d *display) deleteCharAt(i int) {
 }
 
 func (d *display) RefreshScreen() {
+
+	log.Default().Println("refreshing screen")
 
 	buf := &bytes.Buffer{}
 

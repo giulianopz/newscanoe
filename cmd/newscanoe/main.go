@@ -58,7 +58,7 @@ func main() {
 			}
 		}()
 
-		for {
+		for !d.Quitting {
 			d.RefreshScreen()
 			d.ProcessKeyStroke(os.Stdin.Fd(), quitC)
 		}
