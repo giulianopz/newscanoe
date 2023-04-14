@@ -51,7 +51,7 @@ Or download the latest pre-compiled binary from [GitHub](https://github.com/giul
 
 To work on the source code, start the app enabling debug mode with the `-d` flag and redirect stderr to a file:
 ```bash
-:~/newscanoe$ go run cmd/newscanoe/main.go -d  2> log 
+:~$ go run cmd/newscanoe/main.go -d  2> log 
 ```
 
 ---
