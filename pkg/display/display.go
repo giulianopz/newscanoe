@@ -453,9 +453,6 @@ func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 func (d *display) addEnteredFeedUrl() {
 
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 	if err := d.isValidFeedUrl(url); err != nil {
 		d.bottomBarColor = escape.RED
