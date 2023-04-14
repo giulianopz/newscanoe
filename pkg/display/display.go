@@ -195,6 +195,7 @@ func (d *display) scroll(dir byte) {
 	case PAGE_DOWN:
 		{
 			if d.endoff == len(d.rendered)-1 {
+				d.cy = d.height - BOTTOM_PADDING
 				return
 			}
 
@@ -211,6 +212,7 @@ func (d *display) scroll(dir byte) {
 	case PAGE_UP:
 		{
 			if d.startoff == 0 {
+				d.cy = 1
 				return
 			}
 
