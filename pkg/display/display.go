@@ -54,7 +54,7 @@ const (
 	articleTextSectionMsg  = "HELP: Backspace = go back"
 )
 
-type Display struct {
+type display struct {
 	// cursor's position within terminal window
 	cx int
 	cy int
@@ -88,8 +88,8 @@ type Display struct {
 	currentFeedUrl    string
 }
 
-func New(in uintptr) *Display {
-	d := &Display{
+func New(in uintptr) *display {
+	d := &display{
 		cx:             1,
 		cy:             1,
 		startoff:       0,
@@ -111,29 +111,29 @@ func New(in uintptr) *Display {
 	return d
 }
 
-func (d *Display) Quit(quitC chan bool) {
+func (d *display) Quit(quitC chan bool) {
 	fmt.Fprint(os.Stdout, escape.SHOW_CURSOR)
 	fmt.Fprint(os.Stdout, escape.ERASE_ENTIRE_SCREEN)
 	fmt.Fprint(os.Stdout, escape.MoveCursor(1, 1))
 	quitC <- true
 }
 
-func (d *Display) appendRow(raw, rendered string) {
+func (d *display) appendRow(raw, rendered string) {
 	d.raw = append(d.raw, []byte(raw))
 	d.rendered = append(d.rendered, []byte(rendered))
 }
 
-func (d *Display) currentRow() int {
+func (d *display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
 
-func (d *Display) resetCoordinates() {
+func (d *display) resetCoordinates() {
 	d.cy = 1
 	d.cx = 1
 	d.startoff = 0
 }
 
-func (d *Display) resetRows() {
+func (d *display) resetRows() {
 	d.raw = make([][]byte, 0)
 	d.rendered = make([][]byte, 0)
 }
@@ -142,7 +142,7 @@ func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
 
-func (d *Display) moveCursor(dir byte) {
+func (d *display) moveCursor(dir byte) {
 	switch dir {
 	/* case ARROW_LEFT:
 		if d.cx > 1 {
@@ -177,7 +177,7 @@ func (d *Display) moveCursor(dir byte) {
 	}
 }
 
-func (d *Display) scroll(dir byte) {
+func (d *display) scroll(dir byte) {
 	switch dir {
 	case PAGE_DOWN:
 		{
@@ -297,7 +297,7 @@ func readKeyStroke(fd uintptr) byte {
 	}
 }
 
-func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
+func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 
 	input := readKeyStroke(fd)
 
@@ -436,7 +436,7 @@ func (d *Display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
 	}
 }
 
-func (d *Display) addEnteredFeedUrl() {
+func (d *display) addEnteredFeedUrl() {
 
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 	if err := d.isValidFeedUrl(url); err != nil {
@@ -473,7 +473,7 @@ func (d *Display) addEnteredFeedUrl() {
 	d.exitEditingMode(escape.GREEN)
 }
 
-func (d *Display) insertCharAt(c string, i int) {
+func (d *display) insertCharAt(c string, i int) {
 	if i == len(d.editingBuf) {
 		d.editingBuf = append(d.editingBuf, c)
 	} else {
@@ -482,7 +482,7 @@ func (d *Display) insertCharAt(c string, i int) {
 	}
 }
 
-func (d *Display) deleteCharAt(i int) {
+func (d *display) deleteCharAt(i int) {
 	if i == len(d.editingBuf)-1 {
 		d.editingBuf[len(d.editingBuf)-1] = ""
 		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
@@ -493,7 +493,7 @@ func (d *Display) deleteCharAt(i int) {
 	}
 }
 
-func (d *Display) RefreshScreen() {
+func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
@@ -511,11 +511,11 @@ func (d *Display) RefreshScreen() {
 	fmt.Fprint(os.Stdout, buf)
 }
 
-func (d *Display) setBottomMessage(msg string) {
+func (d *display) setBottomMessage(msg string) {
 	d.bottomBarMsg = msg
 }
 
-func (d *Display) setTmpBottomMessage(t time.Duration, msg string) {
+func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	previous := d.bottomBarMsg
 	d.setBottomMessage(msg)
 	go func() {
@@ -526,7 +526,7 @@ func (d *Display) setTmpBottomMessage(t time.Duration, msg string) {
 	}()
 }
 
-func (d *Display) SetWindowSize(fd uintptr) error {
+func (d *display) SetWindowSize(fd uintptr) error {
 	w, h, err := termios.GetWindowSize(int(fd))
 	if err != nil {
 		return err
@@ -536,7 +536,7 @@ func (d *Display) SetWindowSize(fd uintptr) error {
 	return nil
 }
 
-func (d *Display) loadCache() error {
+func (d *display) loadCache() error {
 	cachePath, err := util.GetCacheFilePath()
 	if err != nil {
 		return err
@@ -550,13 +550,13 @@ func (d *Display) loadCache() error {
 	return nil
 }
 
-func (d *Display) exitEditingMode(color int) {
+func (d *display) exitEditingMode(color int) {
 	d.editingMode = false
 	d.editingBuf = []string{}
 	d.bottomBarColor = color
 }
 
-func (d *Display) enterEditingMode() {
+func (d *display) enterEditingMode() {
 	log.Default().Println("live editing enabled")
 
 	d.editingMode = true
@@ -568,7 +568,7 @@ func (d *Display) enterEditingMode() {
 	d.setBottomMessage("")
 }
 
-func (d *Display) loadURLs() error {
+func (d *display) loadURLs() error {
 
 	d.resetRows()
 
@@ -620,14 +620,14 @@ func (d *Display) loadURLs() error {
 	return nil
 }
 
-func (d *Display) isValidFeedUrl(url string) error {
+func (d *display) isValidFeedUrl(url string) error {
 	if _, err := gofeed.NewParser().ParseURL(url); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *Display) loadFeed(url string) {
+func (d *display) loadFeed(url string) {
 	parsedFeed, err := gofeed.NewParser().ParseURL(url)
 	if err != nil {
 		log.Default().Println(err)
@@ -653,7 +653,7 @@ func (d *Display) loadFeed(url string) {
 	}()
 }
 
-func (d *Display) loadAllFeeds() {
+func (d *display) loadAllFeeds() {
 
 	origMsg := d.bottomBarMsg
 
@@ -695,7 +695,7 @@ func (d *Display) loadAllFeeds() {
 
 }
 
-func (d *Display) loadArticlesList(url string) {
+func (d *display) loadArticlesList(url string) {
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == url {
@@ -735,7 +735,7 @@ var client = http.Client{
 	Timeout: 3 * time.Second,
 }
 
-func (d *Display) loadArticleText(url string) {
+func (d *display) loadArticleText(url string) {
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
@@ -799,7 +799,7 @@ func (d *Display) loadArticleText(url string) {
 	}
 }
 
-func (d *Display) draw(buf *bytes.Buffer) {
+func (d *display) draw(buf *bytes.Buffer) {
 
 	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING) - 1
 	if nextEndOff > (len(d.rendered) - 1) {
