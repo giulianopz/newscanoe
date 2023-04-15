@@ -47,10 +47,6 @@ const (
 
 	// num of lines reserved to bottom bar plus final empty row
 	BOTTOM_PADDING = 3
-	// colors
-	WHITE = 37
-	RED   = 31
-	GREEN = 32
 )
 
 const (
