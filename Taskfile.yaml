@@ -1,6 +1,9 @@
 version: '3'
 
 tasks:
+  run: 
+    cmds:
+      - go run cmd/newscanoe/main.go
   build:
     cmds:
       - go build -o newscanoe cmd/newscanoe/main.go
@@ -10,3 +13,6 @@ tasks:
   debug:
     cmds:
       - go run cmd/newscanoe/main.go -d 2> log
+  clean:
+    cmds:
+      - rm ~/.cache/newscanoe/feeds.gob
