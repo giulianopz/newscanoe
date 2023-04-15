@@ -93,7 +93,9 @@ func New(in uintptr) *display {
 		parser: gofeed.NewParser(),
 	}
 
-	d.SetWindowSize(in)
+	if err := d.SetWindowSize(in); err != nil {
+		log.Panicln(err)
+	}
 
 	if err := d.loadCache(); err != nil {
 		log.Panicln(err)
@@ -122,10 +124,12 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 }
 
 func (d *display) SetWindowSize(fd uintptr) error {
+
 	w, h, err := termios.GetWindowSize(int(fd))
 	if err != nil {
 		return err
 	}
+	log.Default().Println("resetting window size")
 	d.width = w
 	d.height = h
 	return nil
@@ -216,7 +220,7 @@ func (d *display) enterEditingMode() {
 
 func (d *display) canBeParsed(url string) bool {
 	if _, err := d.parser.ParseURL(url); err != nil {
-		log.Default().Printf("cannot parse feed url: %v", err)
+		log.Default().Printf("cannot parse feed url: %v\n", err)
 		return false
 	}
 	return true

@@ -42,7 +42,9 @@ func main() {
 		for {
 			s := <-sigC
 			if s == syscall.SIGWINCH {
-				d.SetWindowSize(os.Stdin.Fd())
+				if err := d.SetWindowSize(os.Stdin.Fd()); err != nil {
+					log.Default().Printf("cannot reset window size: %v\n", err)
+				}
 				d.RefreshScreen()
 			} else {
 				d.Quit(quitC)
