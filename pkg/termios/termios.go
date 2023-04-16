@@ -22,7 +22,7 @@ func EnableRawMode(fd uintptr) unix.Termios {
 		log.Panicf("cannot get attr: %v", err)
 	}
 
-	var previousState unix.Termios = *termios
+	var origTermios unix.Termios = *termios
 
 	termios.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
 	termios.Oflag &^= unix.OPOST
@@ -34,7 +34,7 @@ func EnableRawMode(fd uintptr) unix.Termios {
 	if err := unix.IoctlSetTermios(int(fd), unix.TCSETS, termios); err != nil {
 		log.Panicf("cannot set attr: %v", err)
 	}
-	return previousState
+	return origTermios
 }
 
 func GetWindowSize(fd int) (width, height int, err error) {

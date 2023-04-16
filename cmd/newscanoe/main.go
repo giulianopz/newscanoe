@@ -34,15 +34,32 @@ func main() {
 	origTermios := termios.EnableRawMode(os.Stdin.Fd())
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
-	d := display.New(os.Stdin.Fd())
+	d := display.New()
+	w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
+	if err != nil {
+		log.Panicln(err)
+	}
+	d.SetWindowSize(w, h)
 
+	if err := d.LoadCache(); err != nil {
+		log.Panicln(err)
+	}
+
+	if err := d.LoadURLs(); err != nil {
+		log.Panicln(err)
+	}
 	signal.Notify(sigC, signals...)
 
 	go func() {
 		for {
 			s := <-sigC
 			if s == syscall.SIGWINCH {
-				d.SetWindowSize(os.Stdin.Fd())
+				w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
+				if err != nil {
+					log.Default().Printf("cannot reset window size: %v\n", err)
+				}
+				d.SetWindowSize(w, h)
+
 				d.RefreshScreen()
 			} else {
 				d.Quit(quitC)
