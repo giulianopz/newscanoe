@@ -56,6 +56,8 @@ type display struct {
 
 	mu sync.Mutex
 
+	//TODO use arrays of rune
+
 	// dislay raw text
 	raw [][]byte
 	// dislay rendered text
@@ -304,6 +306,10 @@ func (d *display) RefreshScreen() {
 
 	fmt.Fprint(os.Stdout, buf)
 }
+
+// TODO use a rendering func for each app section
+// and render the raw content the first time a section is loaded
+// and afterwards, only when window resizing happens
 
 func (d *display) renderText() {
 
