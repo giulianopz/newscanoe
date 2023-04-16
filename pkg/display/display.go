@@ -12,7 +12,6 @@ import (
 
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/escape"
-	"github.com/giulianopz/newscanoe/pkg/termios"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
 )
@@ -78,7 +77,7 @@ type display struct {
 	parser *gofeed.Parser
 }
 
-func New(in uintptr) *display {
+func New() *display {
 
 	d := &display{
 		cx:             1,
@@ -92,19 +91,6 @@ func New(in uintptr) *display {
 		},
 		parser: gofeed.NewParser(),
 	}
-
-	if err := d.SetWindowSize(in); err != nil {
-		log.Panicln(err)
-	}
-
-	if err := d.loadCache(); err != nil {
-		log.Panicln(err)
-	}
-
-	if err := d.loadURLs(); err != nil {
-		log.Panicln(err)
-	}
-
 	return d
 }
 
@@ -123,16 +109,10 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	}()
 }
 
-func (d *display) SetWindowSize(fd uintptr) error {
-
-	w, h, err := termios.GetWindowSize(int(fd))
-	if err != nil {
-		return err
-	}
+func (d *display) SetWindowSize(w, h int) {
 	log.Default().Println("resetting window size")
 	d.width = w
 	d.height = h
-	return nil
 }
 
 func (d *display) Quit(quitC chan bool) {
@@ -146,9 +126,12 @@ func (d *display) Quit(quitC chan bool) {
 	quitC <- true
 }
 
-func (d *display) appendRow(raw, rendered string) {
-	d.raw = append(d.raw, []byte(raw))
-	d.rendered = append(d.rendered, []byte(rendered))
+func (d *display) appendToRaw(s string) {
+	d.raw = append(d.raw, []byte(s))
+}
+
+func (d *display) appendToRendered(s string) {
+	d.rendered = append(d.rendered, []byte(s))
 }
 
 func (d *display) currentRow() int {
@@ -162,8 +145,8 @@ func (d *display) resetCoordinates() {
 }
 
 func (d *display) resetRows() {
-	d.raw = make([][]byte, 0)
-	d.rendered = make([][]byte, 0)
+	d.raw = make([][]byte, 0, 0)
+	d.rendered = make([][]byte, 0, 0)
 }
 
 func (d *display) insertCharAt(c string, i int) {
@@ -186,7 +169,7 @@ func (d *display) deleteCharAt(i int) {
 	}
 }
 
-func (d *display) loadCache() error {
+func (d *display) LoadCache() error {
 	cachePath, err := util.GetCacheFilePath()
 	if err != nil {
 		return err
@@ -308,6 +291,10 @@ func (d *display) RefreshScreen() {
 	buf.WriteString(escape.HIDE_CURSOR)
 	buf.WriteString(escape.MoveCursor(1, 1))
 
+	if d.currentSection == ARTICLE_TEXT {
+		d.renderText()
+	}
+
 	d.draw(buf)
 
 	buf.WriteString(escape.MoveCursor(d.cy, d.cx))
@@ -316,4 +303,53 @@ func (d *display) RefreshScreen() {
 	}
 
 	fmt.Fprint(os.Stdout, buf)
+}
+
+func (d *display) renderText() {
+
+	log.Default().Println("width: ", d.width)
+
+	chars := make([]byte, 0)
+	for row := range d.raw {
+		if len(d.raw[row]) == 0 {
+			chars = append(chars, '\n')
+		}
+		for _, c := range d.raw[row] {
+			chars = append(chars, c)
+		}
+	}
+
+	d.rendered = make([][]byte, 0)
+	line := make([]byte, 0)
+	for _, c := range chars {
+
+		if c == '\r' || c == '\n' {
+
+			if len(line) != 0 {
+				d.rendered = append(d.rendered, line)
+			}
+			d.rendered = append(d.rendered, []byte{})
+			line = make([]byte, 0)
+			continue
+		}
+
+		if c == '\t' {
+			for i := 0; i < 4; i++ {
+				line = append(line, ' ')
+			}
+			continue
+		}
+
+		if len(line) < d.width-1 {
+			line = append(line, c)
+		} else {
+			d.rendered = append(d.rendered, line)
+			line = make([]byte, 0)
+			line = append(line, c)
+		}
+	}
+
+	if len(line) != 0 {
+		d.rendered = append(d.rendered, line)
+	}
 }

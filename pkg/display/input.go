@@ -182,7 +182,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case ARTICLES_LIST:
-				d.loadURLs()
+				d.LoadURLs()
 				d.currentFeedUrl = ""
 			case ARTICLE_TEXT:
 				d.loadArticlesList(d.currentFeedUrl)

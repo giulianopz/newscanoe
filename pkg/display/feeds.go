@@ -15,7 +15,7 @@ import (
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
 
-func (d *display) loadURLs() error {
+func (d *display) LoadURLs() error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -55,9 +55,11 @@ func (d *display) loadURLs() error {
 
 				cachedFeed, present := cached[string(url)]
 				if !present {
-					d.appendRow(string(url), string(url))
+					d.appendToRaw(string(url))
+					d.appendToRendered(string(url))
 				} else {
-					d.appendRow(cachedFeed.Url, cachedFeed.Title)
+					d.appendToRaw(cachedFeed.Url)
+					d.appendToRendered(cachedFeed.Title)
 				}
 			}
 		}
@@ -160,7 +162,8 @@ func (d *display) loadArticlesList(url string) {
 			d.resetRows()
 
 			for _, item := range cachedFeed.GetItemsOrderedByDate() {
-				d.appendRow(item.Url, util.RenderArticleRow(item.PubDate, item.Title))
+				d.appendToRaw(item.Url)
+				d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
 			d.resetCoordinates()
@@ -215,27 +218,10 @@ func (d *display) loadArticleText(url string) {
 
 					scanner := bufio.NewScanner(&markdown)
 					for scanner.Scan() {
-
-						line := strings.TrimSpace(scanner.Text())
-						if line != "" {
-
-							log.Default().Println("line: ", line)
-
-							if len(line) > d.width {
-
-								for i := 0; i < len(line); i += d.width {
-
-									end := i + d.width
-									if end > len(line) {
-										end = len(line)
-									}
-									d.appendRow(line[i:end], line[i:end])
-								}
-							} else {
-								d.appendRow(line, line)
-							}
-						}
+						d.raw = append(d.raw, []byte(scanner.Text()))
 					}
+
+					d.renderText()
 
 					d.resetCoordinates()
 
@@ -274,7 +260,8 @@ func (d *display) addEnteredFeedUrl() {
 		return
 	}
 
-	d.appendRow(url, url)
+	d.appendToRaw(url)
+	d.appendToRendered(url)
 
 	d.cx = 1
 	d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
