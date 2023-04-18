@@ -72,7 +72,7 @@ type display struct {
 	currentArticleUrl string
 	currentFeedUrl    string
 
-	Quitting bool
+	ListenToKeyStroke bool
 
 	client *http.Client
 
@@ -82,12 +82,13 @@ type display struct {
 func New() *display {
 
 	d := &display{
-		cx:             1,
-		cy:             1,
-		startoff:       0,
-		endoff:         0,
-		cache:          cache.NewCache(),
-		bottomBarColor: escape.WHITE,
+		cx:                1,
+		cy:                1,
+		startoff:          0,
+		endoff:            0,
+		cache:             cache.NewCache(),
+		bottomBarColor:    escape.WHITE,
+		ListenToKeyStroke: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
 		},
@@ -120,7 +121,8 @@ func (d *display) SetWindowSize(w, h int) {
 func (d *display) Quit(quitC chan bool) {
 
 	log.Default().Println("quitting")
-	d.Quitting = true
+
+	d.ListenToKeyStroke = false
 
 	fmt.Fprint(os.Stdout, escape.SHOW_CURSOR)
 	fmt.Fprint(os.Stdout, escape.ERASE_ENTIRE_SCREEN)

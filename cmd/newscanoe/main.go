@@ -31,6 +31,8 @@ func main() {
 		log.SetOutput(io.Discard)
 	}
 
+	signal.Notify(sigC, signals...)
+
 	origTermios := termios.EnableRawMode(os.Stdin.Fd())
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
@@ -48,7 +50,6 @@ func main() {
 	if err := d.LoadURLs(); err != nil {
 		log.Panicln(err)
 	}
-	signal.Notify(sigC, signals...)
 
 	go func() {
 		for {
@@ -75,7 +76,7 @@ func main() {
 			}
 		}()
 
-		for !d.Quitting {
+		for d.ListenToKeyStroke {
 			d.RefreshScreen()
 			d.ProcessKeyStroke(os.Stdin.Fd(), quitC)
 		}
