@@ -1,8 +1,8 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux terminal emulators (at the moment, at least)
-- written in Go but rigorously nonglamorous
+- only for Linux terminal emulators (at the moment, at least) supporting [VT100](https://en.wikipedia.org/wiki/VT100) terminal escape sequences 
+- written in Go but rigorously nonglamorous (i.e. vim-like style)
 - meant to be lighter and easier to build from source or to distribute (in the future) as a traditional distribution-dependent (e.g. rpm/deb) or independent (e.g. Snap, Flatpak, or AppImage) package.
 
 ### Configuration
