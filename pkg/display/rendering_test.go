@@ -52,13 +52,13 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 			d.raw = append(d.raw, []byte(scanner.Text()))
 		}
 
-		d.renderText()
+		d.renderArticleText()
 
 		before := d.rendered
 
 		d.SetWindowSize(261, 27)
 
-		d.renderText()
+		d.renderArticleText()
 
 		after := d.rendered
 
@@ -84,13 +84,13 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 			d.raw = append(d.raw, []byte(scanner.Text()))
 		}
 
-		d.renderText()
+		d.renderArticleText()
 
 		before := d.rendered
 
 		d.SetWindowSize(157, 27)
 
-		d.renderText()
+		d.renderArticleText()
 
 		after := d.rendered
 

@@ -295,8 +295,17 @@ func (d *display) RefreshScreen() {
 	buf.WriteString(escape.HIDE_CURSOR)
 	buf.WriteString(escape.MoveCursor(1, 1))
 
-	if d.currentSection == ARTICLE_TEXT {
-		d.renderText()
+	switch d.currentSection {
+
+	case URLS_LIST:
+		d.renderURLs()
+
+	case ARTICLES_LIST:
+		d.renderArticlesList()
+
+	case ARTICLE_TEXT:
+		d.renderArticleText()
+
 	}
 
 	d.draw(buf)
@@ -307,57 +316,4 @@ func (d *display) RefreshScreen() {
 	}
 
 	fmt.Fprint(os.Stdout, buf)
-}
-
-// TODO use a rendering func for each app section
-// and render the raw content the first time a section is loaded
-// and afterwards, only when window resizing happens
-
-func (d *display) renderText() {
-
-	log.Default().Println("width: ", d.width)
-
-	chars := make([]byte, 0)
-	for row := range d.raw {
-		if len(d.raw[row]) == 0 {
-			chars = append(chars, '\n')
-		}
-		for _, c := range d.raw[row] {
-			chars = append(chars, c)
-		}
-	}
-
-	d.rendered = make([][]byte, 0)
-	line := make([]byte, 0)
-	for _, c := range chars {
-
-		if c == '\r' || c == '\n' {
-
-			if len(line) != 0 {
-				d.rendered = append(d.rendered, line)
-			}
-			d.rendered = append(d.rendered, []byte{})
-			line = make([]byte, 0)
-			continue
-		}
-
-		if c == '\t' {
-			for i := 0; i < 4; i++ {
-				line = append(line, ' ')
-			}
-			continue
-		}
-
-		if len(line) < d.width-1 {
-			line = append(line, c)
-		} else {
-			d.rendered = append(d.rendered, line)
-			line = make([]byte, 0)
-			line = append(line, c)
-		}
-	}
-
-	if len(line) != 0 {
-		d.rendered = append(d.rendered, line)
-	}
 }
