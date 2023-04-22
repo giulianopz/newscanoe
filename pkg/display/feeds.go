@@ -10,7 +10,6 @@ import (
 	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
-	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/escape"
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
@@ -41,30 +40,19 @@ func (d *display) LoadURLs() error {
 	if empty && len(d.cache.GetFeeds()) == 0 {
 		d.setBottomMessage("no feed url: type 'a' to add one now")
 	} else {
-		cached := make(map[string]*cache.Feed, 0)
-
-		for _, cachedFeed := range d.cache.GetFeeds() {
-			cached[cachedFeed.Url] = cachedFeed
-		}
 
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 
 			url := scanner.Bytes()
 			if !strings.Contains(string(url), "#") {
-
-				cachedFeed, present := cached[string(url)]
-				if !present {
-					d.appendToRaw(string(url))
-					d.appendToRendered(string(url))
-				} else {
-					d.appendToRaw(cachedFeed.Url)
-					d.appendToRendered(cachedFeed.Title)
-				}
+				d.appendToRaw(string(url))
 			}
 		}
 		d.setBottomMessage(urlsListSectionMsg)
 	}
+
+	d.renderURLs()
 
 	d.cy = 1
 	d.cx = 1
@@ -163,13 +151,14 @@ func (d *display) loadArticlesList(url string) {
 
 			for _, item := range cachedFeed.GetItemsOrderedByDate() {
 				d.appendToRaw(item.Url)
-				d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
 			}
 
 			d.resetCoordinates()
 
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
+
+			d.renderArticlesList()
 
 			var browserHelp string
 			if !util.IsHeadless() {
@@ -221,7 +210,7 @@ func (d *display) loadArticleText(url string) {
 						d.raw = append(d.raw, []byte(scanner.Text()))
 					}
 
-					d.renderText()
+					d.renderArticleText()
 
 					d.resetCoordinates()
 
