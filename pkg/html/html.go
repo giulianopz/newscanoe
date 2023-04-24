@@ -1,6 +1,7 @@
 package html
 
 import (
+	"html"
 	"log"
 	"time"
 
@@ -12,6 +13,7 @@ func ExtractText(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Default().Printf("article text: %s", article.TextContent)
-	return article.TextContent, nil
+	unescapedText := html.UnescapeString(article.TextContent)
+	log.Default().Printf("unescaped article text: %s", unescapedText)
+	return unescapedText, nil
 }

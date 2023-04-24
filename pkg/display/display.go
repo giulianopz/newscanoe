@@ -248,8 +248,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 			continue
 		}
 
-		for _, c := range string(d.rendered[i]) {
-			buf.WriteRune(c)
+		_, err := buf.Write(d.rendered[i])
+		if err != nil {
+			log.Default().Printf("cannot write rune %q: %v", d.rendered[i], err)
 		}
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {

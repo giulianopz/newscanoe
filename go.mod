@@ -6,7 +6,6 @@ require (
 	github.com/go-shiori/go-readability v0.0.0-20230421032831-c66949dfc0ad
 	github.com/mmcdole/gofeed v1.2.1
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/net v0.9.0
 	golang.org/x/sys v0.7.0
 )
 
@@ -19,5 +18,10 @@ require (
 	github.com/mmcdole/goxpp v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 )
+
+replace github.com/go-shiori/go-readability => github.com/giulianopz/go-readability v0.0.0-20230421032831-c66949dfc0ad
+
+replace github.com/go-shiori/dom => github.com/giulianopz/dom v0.0.0-20230424222347-1387656b6d7a
