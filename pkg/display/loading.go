@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/giulianopz/newscanoe/pkg/escape"
+	"github.com/giulianopz/newscanoe/pkg/html"
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
 
@@ -187,27 +187,21 @@ func (d *display) loadArticleText(url string) {
 
 				if i.Url == url {
 
-					resp, err := d.client.Get(i.Url)
+					text, err := html.ExtractText(i.Url)
 					if err != nil {
 						log.Default().Println(err)
 						d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
 						return
 					}
-					defer resp.Body.Close()
-
-					converter := md.NewConverter("", true, nil)
-					markdown, err := converter.ConvertReader(resp.Body)
-					if err != nil {
-						log.Default().Println(err)
-						d.setTmpBottomMessage(3*time.Second, "cannot parse article text!")
-						return
-					}
 
 					d.resetRows()
 
-					scanner := bufio.NewScanner(&markdown)
+					scanner := bufio.NewScanner(strings.NewReader(text))
 					for scanner.Scan() {
-						d.raw = append(d.raw, []byte(scanner.Text()))
+						line := strings.TrimSpace(scanner.Text())
+						if line != "" {
+							d.raw = append(d.raw, []byte(line+"\n"))
+						}
 					}
 
 					d.renderArticleText()

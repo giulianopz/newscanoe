@@ -21,7 +21,7 @@ const (
 	ERASE_ENTIRE_SCREEN = csi + "2J"
 	HIDE_CURSOR         = csi + "?25l"
 	SHOW_CURSOR         = csi + "?25h"
-	ATTRIBUTES_OFF      = csi + "m"
+	ATTRIBUTES_OFF      = csi + "0m"
 	REVERSE_COLOR       = csi + "7m"
 	DEFAULT_FG_COLOR    = csi + "39m"
 )

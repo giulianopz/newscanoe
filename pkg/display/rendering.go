@@ -17,6 +17,7 @@ func (d *display) renderURLs() {
 		cached[cachedFeed.Url] = cachedFeed
 	}
 
+	d.rendered = make([][]byte, 0)
 	for row := range d.raw {
 		url := d.raw[row]
 		if !strings.Contains(string(url), "#") {
@@ -39,6 +40,7 @@ func (d *display) renderArticlesList() {
 		}
 	}
 
+	d.rendered = make([][]byte, 0)
 	if currentFeed != nil {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
 			d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
