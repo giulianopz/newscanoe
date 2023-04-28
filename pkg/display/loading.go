@@ -52,6 +52,8 @@ func (d *display) LoadURLs() error {
 		d.setBottomMessage(urlsListSectionMsg)
 	}
 
+	d.resetCoordinates()
+
 	d.renderURLs()
 
 	d.cy = 1
@@ -204,9 +206,9 @@ func (d *display) loadArticleText(url string) {
 						}
 					}
 
-					d.renderArticleText()
-
 					d.resetCoordinates()
+
+					d.renderArticleText()
 
 					d.currentArticleUrl = url
 					d.currentSection = ARTICLE_TEXT

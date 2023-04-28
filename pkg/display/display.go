@@ -31,8 +31,8 @@ const BOTTOM_PADDING = 3
 // bottom bar messages
 const (
 	urlsListSectionMsg     = "HELP: q = quit | r = reload | R = reload all | a = add a feed"
-	articlesListSectionMsg = "HELP: Enter = view article | Backspace = go back"
-	articleTextSectionMsg  = "HELP: Backspace = go back"
+	articlesListSectionMsg = "HELP: \u21B5 = view article | \u232B = go back"
+	articleTextSectionMsg  = "HELP: \u232B = go back |  \u25B2 = scroll up | \u25BC = scroll down"
 )
 
 type display struct {
@@ -149,8 +149,8 @@ func (d *display) resetCoordinates() {
 }
 
 func (d *display) resetRows() {
-	d.raw = make([][]byte, 0, 0)
-	d.rendered = make([][]byte, 0, 0)
+	d.raw = make([][]byte, 0)
+	d.rendered = make([][]byte, 0)
 }
 
 func (d *display) insertCharAt(c string, i int) {
