@@ -149,8 +149,8 @@ func (d *display) resetCoordinates() {
 }
 
 func (d *display) resetRows() {
-	d.raw = make([][]byte, 0, 0)
-	d.rendered = make([][]byte, 0, 0)
+	d.raw = make([][]byte, 0)
+	d.rendered = make([][]byte, 0)
 }
 
 func (d *display) insertCharAt(c string, i int) {
