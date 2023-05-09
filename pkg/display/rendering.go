@@ -1,10 +1,12 @@
 package display
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
@@ -25,7 +27,11 @@ func (d *display) renderURLs() {
 			if !present {
 				d.appendToRendered(string(url))
 			} else {
-				d.appendToRendered(cachedFeed.Title)
+				if cachedFeed.New {
+					d.appendToRendered(fmt.Sprintf("%s%s%s", ansi.SGR(ansi.BOLD), cachedFeed.Title, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+				} else {
+					d.appendToRendered(cachedFeed.Title)
+				}
 			}
 		}
 	}
@@ -43,7 +49,11 @@ func (d *display) renderArticlesList() {
 	d.rendered = make([][]byte, 0)
 	if currentFeed != nil {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
-			d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
+			if item.New {
+				d.appendToRendered(fmt.Sprintf("%s%s%s", ansi.SGR(ansi.BOLD), util.RenderArticleRow(item.PubDate, item.Title), ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+			} else {
+				d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
+			}
 		}
 	} else {
 		d.setTmpBottomMessage(1*time.Second, "cannot load article list!")

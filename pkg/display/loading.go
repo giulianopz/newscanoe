@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/escape"
+	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/html"
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
@@ -74,15 +74,12 @@ func (d *display) loadFeed(url string) {
 		return
 	}
 
-	title := strings.TrimSpace(parsedFeed.Title)
-
 	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
 		d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 		return
 	}
 
-	d.rendered[d.currentRow()] = []byte(title)
 	d.currentFeedUrl = url
 
 	go func() {
@@ -112,15 +109,11 @@ func (d *display) loadAllFeeds() {
 			return
 		}
 
-		title := strings.TrimSpace(parsedFeed.Title)
-
 		if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 			log.Default().Println(err)
 			d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 			return
 		}
-
-		d.rendered[id] = []byte(title)
 
 		d.setBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.raw)))
 		d.RefreshScreen()
@@ -149,6 +142,8 @@ func (d *display) loadArticlesList(url string) {
 				return
 			}
 
+			cachedFeed.New = false
+
 			d.resetRows()
 
 			for _, item := range cachedFeed.GetItemsOrderedByDate() {
@@ -173,6 +168,12 @@ func (d *display) loadArticlesList(url string) {
 			}
 
 			d.setBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
+
+			go func() {
+				if err := d.cache.Encode(); err != nil {
+					log.Default().Println(err.Error())
+				}
+			}()
 		}
 	}
 }
@@ -196,6 +197,8 @@ func (d *display) loadArticleText(url string) {
 						return
 					}
 
+					i.New = false
+
 					d.resetRows()
 
 					scanner := bufio.NewScanner(strings.NewReader(text))
@@ -214,6 +217,13 @@ func (d *display) loadArticleText(url string) {
 					d.currentSection = ARTICLE_TEXT
 
 					d.setBottomMessage(articleTextSectionMsg)
+
+					go func() {
+						if err := d.cache.Encode(); err != nil {
+							log.Default().Println(err.Error())
+						}
+					}()
+
 					break
 				}
 			}
@@ -226,7 +236,7 @@ func (d *display) addEnteredFeedUrl() {
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
 	if !d.canBeParsed(url) {
-		d.bottomBarColor = escape.RED
+		d.bottomBarColor = ansi.RED
 		d.setTmpBottomMessage(3*time.Second, "feed url not valid!")
 		return
 	}
@@ -234,7 +244,7 @@ func (d *display) addEnteredFeedUrl() {
 	if err := util.AppendUrl(url); err != nil {
 		log.Default().Println(err)
 
-		d.bottomBarColor = escape.RED
+		d.bottomBarColor = ansi.RED
 
 		var target *util.UrlAlreadyPresentErr
 		if errors.As(err, &target) {
@@ -246,7 +256,6 @@ func (d *display) addEnteredFeedUrl() {
 	}
 
 	d.appendToRaw(url)
-	d.appendToRendered(url)
 
 	d.cx = 1
 	d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
@@ -256,5 +265,5 @@ func (d *display) addEnteredFeedUrl() {
 
 	d.setBottomMessage(urlsListSectionMsg)
 	d.setTmpBottomMessage(3*time.Second, "new feed saved!")
-	d.exitEditingMode(escape.GREEN)
+	d.exitEditingMode(ansi.GREEN)
 }

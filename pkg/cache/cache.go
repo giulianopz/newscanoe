@@ -36,6 +36,7 @@ type Feed struct {
 	Url   string
 	Title string
 	Items []*Item
+	New   bool
 }
 
 func NewFeed(url, title string) *Feed {
@@ -43,6 +44,7 @@ func NewFeed(url, title string) *Feed {
 		Title: title,
 		Url:   url,
 		Items: make([]*Item, 0),
+		New:   true,
 	}
 }
 
@@ -58,6 +60,7 @@ type Item struct {
 	Title   string
 	Url     string
 	PubDate time.Time
+	New     bool
 }
 
 func NewItem(title, url string, pubDate time.Time) *Item {
@@ -65,6 +68,7 @@ func NewItem(title, url string, pubDate time.Time) *Item {
 		Title:   title,
 		Url:     url,
 		PubDate: pubDate,
+		New:     true,
 	}
 }
 
@@ -129,11 +133,19 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		if cachedFeed.Url == url {
 
 			cachedFeed.Title = title
-			cachedFeed.Items = make([]*Item, 0)
+			cachedFeed.New = true
+			//cachedFeed.Items = make([]*Item, 0)
 
 			for _, parsedItem := range parsedFeed.Items {
-				cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
-				cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+
+				alreadyPresent := slices.ContainsFunc(cachedFeed.Items, func(i *Item) bool {
+					return i.Title == parsedItem.Title
+				})
+
+				if !alreadyPresent {
+					cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
+					cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+				}
 			}
 			log.Default().Printf("refreshed cached feed with url: %s\n", url)
 			return nil

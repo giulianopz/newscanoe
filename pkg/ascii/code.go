@@ -1,7 +1,10 @@
 package ascii
 
 /*
-see: https://theasciicode.com.ar/
+// ASCII control codes
+see:
+- https://theasciicode.com.ar/
+- https://en.wikipedia.org/wiki/C0_and_C1_control_codes
 */
 
 const (
