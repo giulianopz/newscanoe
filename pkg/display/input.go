@@ -81,7 +81,7 @@ func readKeyStroke(fd uintptr) byte {
 					switch seq[1] {
 					case 'A': // 65
 						return ARROW_UP
-					case 'B': // 65
+					case 'B': // 66
 						return ARROW_DOWN
 					case 'C': // 67
 						return ARROW_RIGHT
@@ -127,22 +127,22 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 	case ctrlPlus('q'), 'q':
 		d.Quit(quitC)
 
-	case ctrlPlus('r'), 'r':
+	case 'r':
 		if d.currentSection == URLS_LIST {
 			d.loadFeed(string(d.raw[d.currentRow()]))
 		}
 
-	case ctrlPlus('a'), 'a':
+	case 'a':
 		if d.currentSection == URLS_LIST {
 			d.enterEditingMode()
 		}
 
-	case ctrlPlus('R'), 'R':
+	case 'R':
 		if d.currentSection == URLS_LIST {
 			d.loadAllFeeds()
 		}
 
-	case ctrlPlus('o'), 'o':
+	case 'o':
 		if d.currentSection == ARTICLES_LIST {
 			if !util.IsHeadless() {
 				if err := util.OpenWithBrowser(string(d.raw[d.currentRow()])); err != nil {
@@ -151,7 +151,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			}
 		}
 
-	case ctrlPlus('l'), 'l':
+	case 'l':
 		if d.currentSection == ARTICLES_LIST {
 			if util.IsLynxPresent() {
 				if err := util.OpenWithLynx(string(d.raw[d.currentRow()])); err != nil {
@@ -160,7 +160,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			}
 		}
 
-	case ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT:
+	case ARROW_UP, ARROW_DOWN:
 		d.moveCursor(input)
 
 	case PAGE_UP, PAGE_DOWN:
@@ -260,20 +260,6 @@ func ctrlPlus(k byte) byte {
 
 func (d *display) moveCursor(dir byte) {
 	switch dir {
-	/* case ARROW_LEFT:
-		if d.cx > 1 {
-			d.cx--
-		} else if d.cy > 1 {
-			d.cy--
-			d.cx = len(d.rendered[d.currentRow()])
-		}
-	case ARROW_RIGHT:
-		if (d.cx - 1) < (len(d.rendered[d.currentRow()]) - 1) {
-			d.cx++
-		} else if d.cy >= 1 && d.cy < (d.height-BOTTOM_PADDING) && d.cy+1 < len(d.rendered) {
-			d.cy++
-			d.cx = 1
-		} */
 	case ARROW_DOWN:
 		if d.cy < (d.height - BOTTOM_PADDING) {
 			if d.currentRow()+1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()+1])-1) {
