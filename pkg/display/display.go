@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/cache"
-	"github.com/giulianopz/newscanoe/pkg/escape"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
 )
@@ -87,7 +87,7 @@ func New() *display {
 		startoff:          0,
 		endoff:            0,
 		cache:             cache.NewCache(),
-		bottomBarColor:    escape.WHITE,
+		bottomBarColor:    ansi.WHITE,
 		ListenToKeyStroke: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
@@ -106,7 +106,7 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	d.setBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.bottomBarColor = escape.WHITE
+			d.bottomBarColor = ansi.WHITE
 			d.setBottomMessage(previous)
 		})
 	}()
@@ -124,9 +124,9 @@ func (d *display) Quit(quitC chan bool) {
 
 	d.ListenToKeyStroke = false
 
-	fmt.Fprint(os.Stdout, escape.SHOW_CURSOR)
-	fmt.Fprint(os.Stdout, escape.ERASE_ENTIRE_SCREEN)
-	fmt.Fprint(os.Stdout, escape.MoveCursor(1, 1))
+	fmt.Fprint(os.Stdout, ansi.ShowCursor())
+	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
 	quitC <- true
 }
 
@@ -234,8 +234,8 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			buf.WriteString(escape.REVERSE_COLOR)
-			buf.WriteString(escape.SelectGraphicRendition(escape.WHITE))
+			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+			buf.WriteString(ansi.SGR(ansi.WHITE))
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
@@ -254,8 +254,8 @@ func (d *display) draw(buf *bytes.Buffer) {
 		}
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
-			buf.WriteString(escape.ATTRIBUTES_OFF)
-			buf.WriteString(escape.DEFAULT_FG_COLOR)
+			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+			buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
 		}
 
 		buf.WriteString("\r\n")
@@ -278,12 +278,12 @@ func (d *display) draw(buf *bytes.Buffer) {
 	}
 	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 
-	buf.WriteString(escape.REVERSE_COLOR)
-	buf.WriteString(escape.SelectGraphicRendition(d.bottomBarColor))
+	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+	buf.WriteString(ansi.SGR(d.bottomBarColor))
 	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
 
-	buf.WriteString(escape.ATTRIBUTES_OFF)
-	buf.WriteString(escape.DEFAULT_FG_COLOR)
+	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
 }
 
 func (d *display) RefreshScreen() {
@@ -292,9 +292,9 @@ func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
-	buf.WriteString(escape.ERASE_ENTIRE_SCREEN)
-	buf.WriteString(escape.HIDE_CURSOR)
-	buf.WriteString(escape.MoveCursor(1, 1))
+	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	buf.WriteString(ansi.HideCursor())
+	buf.WriteString(ansi.MoveCursor(1, 1))
 
 	switch d.currentSection {
 
@@ -311,9 +311,9 @@ func (d *display) RefreshScreen() {
 
 	d.draw(buf)
 
-	buf.WriteString(escape.MoveCursor(d.cy, d.cx))
+	buf.WriteString(ansi.MoveCursor(d.cy, d.cx))
 	if d.editingMode {
-		buf.WriteString(escape.SHOW_CURSOR)
+		buf.WriteString(ansi.ShowCursor())
 	}
 
 	fmt.Fprint(os.Stdout, buf)
