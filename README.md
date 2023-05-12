@@ -1,7 +1,7 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux terminal emulators (at the moment, at least) supporting [VT100](https://en.wikipedia.org/wiki/VT100) terminal escape sequences 
+- only for Linux (at the moment, at least) terminal emulators supporting [VT100](https://en.wikipedia.org/wiki/VT100) terminal escape sequences 
 - written in Go but rigorously nonglamorous (i.e. vim-like style)
 - meant to be lighter and easier to build from source or to distribute (in the future) as a traditional distribution-dependent (e.g. rpm/deb) or independent (e.g. Snap, Flatpak, or AppImage) package.
 
@@ -9,9 +9,11 @@ Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https
 
 The only config file consists of urls of RSS/Atom feeds listed line-by-line (see the [urls sample file](./assets/urls)) and located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
 
-If such file does not already exist, it will be created at the first execution of the app and the user will be able to manually insert a url by typing `a` or by creating/modifying such file with any text editor.
+If such file does not already exist, it will be created at the first execution of the app and you will be able to manually insert a url by typing `a`, Otherwise create such file with any text editor.
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
+
+Currently, the app uses just the default foreground colour (+ red/green as feedbacks to user actions) of your terminal theme to highlight the different UI components.
 
 ### Keybindings
 
@@ -26,10 +28,10 @@ Supported key bindings:
 - `^`, `v`, move the cursor to the previous/next row
 - `Page Up`, `Page Down`, move the cursor to the previous/next page
 - `a`, insert manually a new feed url, then:
+    - `ENTER`, append it to the config file
     - `<`, `>`, move the cursor to the previous/next char
     - `BACKSPACE`, cancel last char
     - `CANC`, cancel currently highlighted char
-    - `ENTER`, append the typed in url in the config file
 
 ### Installation
 
@@ -45,7 +47,7 @@ Build from source:
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
 
-[![asciicast](https://asciinema.org/a/Q9Gb1D7Hpd85JBW98CoToWcQb.svg)](https://asciinema.org/a/Q9Gb1D7Hpd85JBW98CoToWcQb)
+[![asciicast](https://asciinema.org/a/GmD6rN1s4vcQVT0xmlYOrlacq.svg)](https://asciinema.org/a/GmD6rN1s4vcQVT0xmlYOrlacq)
 
 ### Development
 

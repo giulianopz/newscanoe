@@ -4,15 +4,23 @@ tasks:
   run: 
     cmds:
       - go run cmd/newscanoe/main.go
+      
   build:
     cmds:
-      - go build -o newscanoe cmd/newscanoe/main.go
+      - go build -o newscanoe --ldflags="-X 'github.com/giulianopz/newscanoe/pkg/app.Version=$(git describe --tags $(git rev-list --tags --max-count=1))'" cmd/newscanoe/main.go
+
   install:
     cmds:
       - cp ./newscanoe ~/bin/
+
+  release:
+    cmds:
+      - goreleaser release --debug --snapshot --skip-publish --rm-dist
+
   debug:
     cmds:
       - go run cmd/newscanoe/main.go -d 2> log
+
   clean:
     cmds:
       - rm ~/.cache/newscanoe/feeds.gob
