@@ -65,19 +65,19 @@ func (d *display) renderArticleText() {
 
 	log.Default().Println("width: ", d.width)
 
-	chars := make([]byte, 0)
+	runes := make([]rune, 0)
 	for row := range d.raw {
 		if len(d.raw[row]) == 0 {
-			chars = append(chars, '\n')
+			runes = append(runes, '\n')
 		}
-		for _, c := range d.raw[row] {
-			chars = append(chars, c)
+		for _, c := range string(d.raw[row]) {
+			runes = append(runes, c)
 		}
 	}
 
 	d.rendered = make([][]byte, 0)
 	line := make([]byte, 0)
-	for _, c := range chars {
+	for _, c := range runes {
 
 		if c == '\r' || c == '\n' {
 
@@ -97,11 +97,11 @@ func (d *display) renderArticleText() {
 		}
 
 		if len(line) < d.width-1 {
-			line = append(line, c)
+			line = append(line, []byte(string(c))...)
 		} else {
 			d.rendered = append(d.rendered, line)
 			line = make([]byte, 0)
-			line = append(line, c)
+			line = append(line, []byte(string(c))...)
 		}
 	}
 

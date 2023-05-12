@@ -30,3 +30,20 @@ see paragraph 2.2: https://www.ietf.org/rfc/rfc3986.txt
 func IsSpecialChar(input byte) bool {
 	return slices.Contains(specialChars, input)
 }
+
+func Truncate(str string, length int) string {
+	if length <= 0 {
+		return ""
+	}
+
+	truncated := ""
+	count := 0
+	for _, rune := range str {
+		truncated += string(rune)
+		count++
+		if count >= length {
+			break
+		}
+	}
+	return truncated
+}

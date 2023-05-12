@@ -261,7 +261,7 @@ func ctrlPlus(k byte) byte {
 func (d *display) moveCursor(dir byte) {
 	switch dir {
 	case ARROW_DOWN:
-		if d.cy < (d.height - BOTTOM_PADDING) {
+		if d.cy < (d.height - BOTTOM_PADDING - TOP_PADDING) {
 			if d.currentRow()+1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()+1])-1) {
 				d.cy++
 			}
@@ -284,7 +284,7 @@ func (d *display) scroll(dir byte) {
 	case PAGE_DOWN:
 		{
 			if d.endoff == len(d.rendered)-1 {
-				d.cy = d.height - BOTTOM_PADDING
+				d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
 				return
 			}
 
@@ -296,7 +296,7 @@ func (d *display) scroll(dir byte) {
 				d.endoff = len(d.rendered) - 1
 			}
 
-			d.cy = d.height - BOTTOM_PADDING
+			d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
 		}
 	case PAGE_UP:
 		{
@@ -305,12 +305,12 @@ func (d *display) scroll(dir byte) {
 				return
 			}
 
-			firstItemInPreviousPage := d.startoff - (d.height - BOTTOM_PADDING)
+			firstItemInPreviousPage := d.startoff - (d.height - BOTTOM_PADDING - TOP_PADDING)
 			if firstItemInPreviousPage >= 0 {
 				d.startoff = firstItemInPreviousPage
 			} else {
 				d.startoff = 0
-				d.endoff = d.height - BOTTOM_PADDING - 1
+				d.endoff = d.height - BOTTOM_PADDING - TOP_PADDING - 1
 			}
 
 			d.cy = 1

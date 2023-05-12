@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/giulianopz/newscanoe/pkg/ansi"
+	"github.com/giulianopz/newscanoe/pkg/app"
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/mmcdole/gofeed"
@@ -25,8 +26,11 @@ const (
 	ARTICLE_TEXT
 )
 
-// num of lines reserved to bottom bar plus final empty row
-const BOTTOM_PADDING = 3
+// num of lines reserved to top and bottom bars plus a final empty row
+const (
+	TOP_PADDING    = 2
+	BOTTOM_PADDING = 3
+)
 
 // bottom bar messages
 const (
@@ -48,15 +52,16 @@ type display struct {
 	height int
 	width  int
 
-	bottomBarColor int
+	// color of top and bottom bars
+	barsColor int
+	// message displayed in the bottom bar
+	topBarMsg string
 	// message displayed in the bottom bar
 	bottomBarMsg string
 	// message displayed in the right corner of the bottom bar
 	bottomRightCorner string
 
 	mu sync.Mutex
-
-	//TODO use arrays of rune
 
 	// dislay raw text
 	raw [][]byte
@@ -87,7 +92,7 @@ func New() *display {
 		startoff:          0,
 		endoff:            0,
 		cache:             cache.NewCache(),
-		bottomBarColor:    ansi.WHITE,
+		barsColor:         ansi.WHITE,
 		ListenToKeyStroke: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
@@ -95,6 +100,12 @@ func New() *display {
 		parser: gofeed.NewParser(),
 	}
 	return d
+}
+
+func (d *display) setTopMessage(msg string) {
+	if utf8.RuneCountInString(msg) < (d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(app.Version) - 2) {
+		d.topBarMsg = msg
+	}
 }
 
 func (d *display) setBottomMessage(msg string) {
@@ -106,7 +117,7 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	d.setBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.bottomBarColor = ansi.WHITE
+			d.barsColor = ansi.WHITE
 			d.setBottomMessage(previous)
 		})
 	}()
@@ -190,7 +201,7 @@ func (d *display) LoadCache() error {
 func (d *display) exitEditingMode(color int) {
 	d.editingMode = false
 	d.editingBuf = []string{}
-	d.bottomBarColor = color
+	d.barsColor = color
 }
 
 func (d *display) enterEditingMode() {
@@ -215,7 +226,30 @@ func (d *display) canBeParsed(url string) bool {
 
 func (d *display) draw(buf *bytes.Buffer) {
 
-	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING) - 1
+	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+	buf.WriteString(ansi.SGR(d.barsColor))
+
+	padding := d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(d.topBarMsg) - 2
+	log.Default().Printf("top-padding: %d", padding)
+	if padding > 0 {
+		buf.WriteString(fmt.Sprintf("%s %s %*s\r\n", app.Name, d.topBarMsg, padding, app.Version))
+	} else {
+		buf.WriteString(app.Name)
+		padding = d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(app.Version)
+		for i := padding; i > 0; i-- {
+			buf.WriteString(" ")
+		}
+		buf.WriteString(fmt.Sprintf("%s\r\n", app.Version))
+	}
+
+	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
+
+	for k := 0; k < d.width; k++ {
+		buf.WriteString("-")
+	}
+
+	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING - TOP_PADDING) - 1
 	if nextEndOff > (len(d.rendered) - 1) {
 		d.endoff = (len(d.rendered) - 1)
 	} else {
@@ -229,7 +263,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 		}
 	}
 
-	log.Default().Printf("looping from %d to %d\n", d.startoff, d.endoff)
+	log.Default().Printf("looping from %d to %d: %d\n", d.startoff, d.endoff, d.endoff-d.startoff)
 	var printed int
 	for i := d.startoff; i <= d.endoff; i++ {
 
@@ -241,28 +275,35 @@ func (d *display) draw(buf *bytes.Buffer) {
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
 		// if so, the "LANG" env variable should contain "UTF"
 
-		runes := utf8.RuneCountInString(string(d.rendered[i]))
-
-		if runes > d.width {
-			log.Default().Printf("runes for line %d exceed screen width: %d\n", i, runes)
-			continue
+		line := string(d.rendered[i])
+		if line == "" {
+			line = " "
+		} else {
+			runes := utf8.RuneCountInString(line)
+			if runes > d.width {
+				log.Default().Printf("truncating current line because its length %d exceeda screen width: %d\n", i, runes)
+				line = util.Truncate(line, d.width)
+			}
 		}
 
-		_, err := buf.Write(d.rendered[i])
+		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
+
+		_, err := buf.Write([]byte(line))
 		if err != nil {
-			log.Default().Printf("cannot write rune %q: %v", d.rendered[i], err)
+			log.Default().Printf("cannot write byte array %q: %v", []byte(" "), err)
 		}
+
+		buf.WriteString("\r\n")
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 			buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
 		}
 
-		buf.WriteString("\r\n")
 		printed++
 	}
 
-	for ; printed < d.height-BOTTOM_PADDING; printed++ {
+	for ; printed < d.height-BOTTOM_PADDING-TOP_PADDING; printed++ {
 		buf.WriteString("\r\n")
 	}
 
@@ -271,16 +312,26 @@ func (d *display) draw(buf *bytes.Buffer) {
 	}
 	buf.WriteString("\r\n")
 
+	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	if DebugMode {
 		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
-	} else {
-		d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	}
-	padding := d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+
+	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+	log.Default().Printf("bottom-padding: %d", padding)
 
 	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
-	buf.WriteString(ansi.SGR(d.bottomBarColor))
-	buf.WriteString(fmt.Sprintf("%s %*s\r\n", d.bottomBarMsg, padding, d.bottomRightCorner))
+	buf.WriteString(ansi.SGR(d.barsColor))
+
+	if padding > 0 {
+		buf.WriteString(fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner))
+	} else {
+		padding = d.width - utf8.RuneCountInString(d.bottomRightCorner)
+		for i := padding; i > 0; i-- {
+			buf.WriteString(" ")
+		}
+		buf.WriteString(d.bottomRightCorner)
+	}
 
 	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 	buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
@@ -306,7 +357,6 @@ func (d *display) RefreshScreen() {
 
 	case ARTICLE_TEXT:
 		d.renderArticleText()
-
 	}
 
 	d.draw(buf)

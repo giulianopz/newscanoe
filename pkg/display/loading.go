@@ -56,6 +56,8 @@ func (d *display) LoadURLs() error {
 
 	d.renderURLs()
 
+	d.setTopMessage("")
+
 	d.cy = 1
 	d.cx = 1
 	d.currentSection = URLS_LIST
@@ -167,6 +169,7 @@ func (d *display) loadArticlesList(url string) {
 				lynxHelp = " | l = open with lynx"
 			}
 
+			d.setTopMessage(fmt.Sprintf("> %s", cachedFeed.Title))
 			d.setBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
 
 			go func() {
@@ -216,6 +219,7 @@ func (d *display) loadArticleText(url string) {
 					d.currentArticleUrl = url
 					d.currentSection = ARTICLE_TEXT
 
+					d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Title, i.Title))
 					d.setBottomMessage(articleTextSectionMsg)
 
 					go func() {
@@ -236,7 +240,7 @@ func (d *display) addEnteredFeedUrl() {
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
 	if !d.canBeParsed(url) {
-		d.bottomBarColor = ansi.RED
+		d.barsColor = ansi.RED
 		d.setTmpBottomMessage(3*time.Second, "feed url not valid!")
 		return
 	}
@@ -244,7 +248,7 @@ func (d *display) addEnteredFeedUrl() {
 	if err := util.AppendUrl(url); err != nil {
 		log.Default().Println(err)
 
-		d.bottomBarColor = ansi.RED
+		d.barsColor = ansi.RED
 
 		var target *util.UrlAlreadyPresentErr
 		if errors.As(err, &target) {
@@ -258,8 +262,8 @@ func (d *display) addEnteredFeedUrl() {
 	d.appendToRaw(url)
 
 	d.cx = 1
-	d.cy = len(d.rendered) % (d.height - BOTTOM_PADDING)
-	d.startoff = (len(d.rendered) - 1) / (d.height - BOTTOM_PADDING) * (d.height - BOTTOM_PADDING)
+	d.cy = len(d.raw) % (d.height - BOTTOM_PADDING - TOP_PADDING)
+	d.startoff = (len(d.raw) - 1) / (d.height - BOTTOM_PADDING - TOP_PADDING) * (d.height - BOTTOM_PADDING - TOP_PADDING)
 
 	d.loadFeed(url)
 
