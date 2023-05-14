@@ -259,18 +259,21 @@ func ctrlPlus(k byte) byte {
 }
 
 func (d *display) moveCursor(dir byte) {
+
+	var renderedRowsLen int = len(d.rendered) - 1
+
 	switch dir {
 	case ARROW_DOWN:
 		if d.cy < (d.height - BOTTOM_PADDING - TOP_PADDING) {
-			if d.currentRow()+1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()+1])-1) {
+			if d.currentRow()+1 <= renderedRowsLen {
 				d.cy++
 			}
-		} else if d.endoff < len(d.rendered)-1 {
+		} else if d.endoff < renderedRowsLen {
 			d.startoff++
 		}
 	case ARROW_UP:
 		if d.cy > 1 {
-			if d.currentRow()-1 <= len(d.rendered)-1 && (d.cx-1) <= (len(d.rendered[d.currentRow()-1])-1) {
+			if d.currentRow()-1 <= renderedRowsLen {
 				d.cy--
 			}
 		} else if d.startoff > 0 {
@@ -280,20 +283,23 @@ func (d *display) moveCursor(dir byte) {
 }
 
 func (d *display) scroll(dir byte) {
+
 	switch dir {
 	case PAGE_DOWN:
 		{
-			if d.endoff == len(d.rendered)-1 {
+			var renderedRowsLen int = len(d.rendered) - 1
+
+			if d.endoff == renderedRowsLen {
 				d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
 				return
 			}
 
 			firstItemInNextPage := d.endoff + 1
-			if firstItemInNextPage < len(d.rendered)-1 {
+			if firstItemInNextPage < renderedRowsLen {
 				d.startoff = firstItemInNextPage
 			} else {
 				d.startoff++
-				d.endoff = len(d.rendered) - 1
+				d.endoff = renderedRowsLen
 			}
 
 			d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
