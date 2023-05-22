@@ -8,6 +8,10 @@ tasks:
   build:
     cmds:
       - go build -o newscanoe --ldflags="-X 'github.com/giulianopz/newscanoe/pkg/app.Version=$(git describe --tags $(git rev-list --tags --max-count=1))'" cmd/newscanoe/main.go
+    
+  lint:
+    cmds:
+      - golangci-lint -v run
 
   install:
     cmds:
