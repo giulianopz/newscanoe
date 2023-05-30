@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	quitC = make(chan bool, 0)
+	quitC = make(chan bool)
 	sigC  = make(chan os.Signal, 1)
 
 	signals = []os.Signal{

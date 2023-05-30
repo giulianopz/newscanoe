@@ -182,7 +182,9 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case ARTICLES_LIST:
-				d.LoadURLs()
+				if err := d.LoadURLs(); err != nil {
+					log.Default().Printf("cannot load urls: %v", err)
+				}
 				d.currentFeedUrl = ""
 			case ARTICLE_TEXT:
 				d.loadArticlesList(d.currentFeedUrl)
