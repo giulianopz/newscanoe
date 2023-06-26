@@ -7,6 +7,7 @@ tasks:
       
   build:
     cmds:
+      - go generate ./...
       - go build -o newscanoe --ldflags="-X 'github.com/giulianopz/newscanoe/pkg/app.Version=$(git describe --tags $(git rev-list --tags --max-count=1))'" cmd/newscanoe/main.go
     
   lint:
@@ -15,6 +16,7 @@ tasks:
 
   install:
     cmds:
+      - mkdir ~/bin
       - cp ./newscanoe ~/bin/
 
   release:
