@@ -1,15 +1,15 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux (at the moment, at least) terminal emulators supporting [VT100](https://en.wikipedia.org/wiki/VT100) terminal escape sequences 
-- written in Go but rigorously nonglamorous (i.e. vim-like style)
-- meant to be lighter and easier to build from source or to distribute (in the future) as a traditional distribution-dependent (e.g. rpm/deb) or independent (e.g. Snap, Flatpak, or AppImage) package.
+- only for Linux (at the moment, at least) terminal emulators supporting [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. default terminals on Linux distros)
+- written in Go but rigorously nonglamorous (i.e. vim-like)
+- meant to be lighter and easier to build from source and to distribute.
 
 ### Configuration
 
 The only config file consists of urls of RSS/Atom feeds listed line-by-line (see the [urls sample file](./assets/urls)) and located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
 
-If such file does not already exist, it will be created at the first execution of the app and you will be able to manually insert a url by typing `a`, Otherwise create such file with any text editor.
+If such file does not already exist, it will be created at the first execution of the app and you will be able to manually insert a url by typing `a`. Otherwise create such file with any text editor.
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
 
