@@ -85,7 +85,7 @@ func (d *display) renderArticleText() {
 		if c == '\r' || c == '\n' {
 
 			if len(line) != 0 {
-				d.rendered = append(d.rendered, withMargin(margin, line))
+				d.rendered = append(d.rendered, add(margin, line))
 			}
 			d.rendered = append(d.rendered, []byte{})
 			line = make([]byte, 0)
@@ -102,23 +102,23 @@ func (d *display) renderArticleText() {
 		if len(line) < textSpace {
 			line = append(line, []byte(string(c))...)
 		} else {
-			d.rendered = append(d.rendered, withMargin(margin, line))
+			d.rendered = append(d.rendered, add(margin, line))
 			line = make([]byte, 0)
 			line = append(line, []byte(string(c))...)
 		}
 	}
 
 	if len(line) != 0 {
-		d.rendered = append(d.rendered, withMargin(margin, line))
+		d.rendered = append(d.rendered, add(margin, line))
 	}
 }
 
-func withMargin(margin int, line []byte) []byte {
-	if margin != 0 {
+func add(num int, line []byte) []byte {
+	if num != 0 {
 		padded := make([]byte, 0)
-		for margin != 0 {
+		for num != 0 {
 			padded = append(padded, ' ')
-			margin--
+			num--
 		}
 		padded = append(padded, line...)
 		return padded
