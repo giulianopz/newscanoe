@@ -39,10 +39,6 @@ Build from source:
 ```bash
 :~$ git clone https://github.com/giulianopz/newscanoe.git
 :~$ go build -o newscanoe cmd/newscanoe/main.go && cp ./newscanoe /usr/local/bin
-# or with task
-:~$ task build && task install
-# then, start the app
-:~$ newscanoe
 ```
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
