@@ -168,13 +168,12 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case ascii.ENTER:
 		{
-			url := string(d.raw[d.currentRow()])
 
 			switch d.currentSection {
 			case URLS_LIST:
-				d.loadArticlesList(url)
+				d.loadArticlesList(d.currentUrl())
 			case ARTICLES_LIST:
-				d.loadArticleText(url)
+				d.loadArticleText(d.currentUrl())
 			}
 		}
 

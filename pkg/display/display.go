@@ -153,6 +153,10 @@ func (d *display) currentRow() int {
 	return d.cy - 1 + d.startoff
 }
 
+func (d *display) currentUrl() string {
+	return string(d.raw[d.currentRow()])
+}
+
 func (d *display) resetCoordinates() {
 	d.cy = 1
 	d.cx = 1
