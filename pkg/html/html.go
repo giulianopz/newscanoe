@@ -9,7 +9,7 @@ import (
 )
 
 func ExtractText(url string) (string, error) {
-	article, err := readability.FromURL(url, 2*time.Second)
+	article, err := readability.FromURL(url, 3*time.Second)
 	if err != nil {
 		return "", err
 	}

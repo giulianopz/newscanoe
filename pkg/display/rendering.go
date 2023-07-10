@@ -65,6 +65,9 @@ func (d *display) renderArticleText() {
 
 	log.Default().Println("width: ", d.width)
 
+	textSpace := (d.width - 1) / 4 * 2
+	margin := ((d.width - 1) - textSpace) / 2
+
 	runes := make([]rune, 0)
 	for row := range d.raw {
 		if len(d.raw[row]) == 0 {
@@ -82,7 +85,7 @@ func (d *display) renderArticleText() {
 		if c == '\r' || c == '\n' {
 
 			if len(line) != 0 {
-				d.rendered = append(d.rendered, line)
+				d.rendered = append(d.rendered, add(margin, line))
 			}
 			d.rendered = append(d.rendered, []byte{})
 			line = make([]byte, 0)
@@ -96,16 +99,29 @@ func (d *display) renderArticleText() {
 			continue
 		}
 
-		if len(line) < d.width-1 {
+		if len(line) < textSpace {
 			line = append(line, []byte(string(c))...)
 		} else {
-			d.rendered = append(d.rendered, line)
+			d.rendered = append(d.rendered, add(margin, line))
 			line = make([]byte, 0)
 			line = append(line, []byte(string(c))...)
 		}
 	}
 
 	if len(line) != 0 {
-		d.rendered = append(d.rendered, line)
+		d.rendered = append(d.rendered, add(margin, line))
 	}
+}
+
+func add(num int, line []byte) []byte {
+	if num != 0 {
+		padded := make([]byte, 0)
+		for num != 0 {
+			padded = append(padded, ' ')
+			num--
+		}
+		padded = append(padded, line...)
+		return padded
+	}
+	return line
 }
