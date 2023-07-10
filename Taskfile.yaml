@@ -16,7 +16,7 @@ tasks:
 
   install:
     cmds:
-      - mkdir ~/bin
+      - mkdir -p ~/bin
       - cp ./newscanoe ~/bin/
 
   release:
