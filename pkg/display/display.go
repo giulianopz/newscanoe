@@ -14,6 +14,7 @@ import (
 	"github.com/giulianopz/newscanoe/pkg/app"
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/pkg/xterm"
 	"github.com/mmcdole/gofeed"
 )
 
@@ -138,6 +139,8 @@ func (d *display) Quit(quitC chan bool) {
 	fmt.Fprint(os.Stdout, ansi.ShowCursor())
 	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
 	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
+	fmt.Fprint(os.Stdout, xterm.ENABLE_MOUSE_TRACKING)
+	fmt.Fprint(os.Stdout, xterm.CLEAR_SCROLLBACK_BUFFER)
 	quitC <- true
 }
 
@@ -347,6 +350,7 @@ func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
+	buf.WriteString(xterm.DISABLE_MOUSE_TRACKING)
 	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
 	buf.WriteString(ansi.HideCursor())
 	buf.WriteString(ansi.MoveCursor(1, 1))
