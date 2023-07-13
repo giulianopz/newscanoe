@@ -350,8 +350,6 @@ func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
-	buf.WriteString("\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h")
-
 	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
 	buf.WriteString(ansi.HideCursor())
 	buf.WriteString(ansi.MoveCursor(1, 1))
