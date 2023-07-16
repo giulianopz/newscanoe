@@ -7,7 +7,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+var NoPubDate time.Time = time.Date(1001, 1, 1, 1, 1, 1, 1, time.UTC)
+
 func RenderArticleRow(pubDate time.Time, title string) string {
+	if pubDate == NoPubDate {
+		return fmt.Sprintf("%-20s %s", "N/A", title)
+	}
 	return fmt.Sprintf("%-20s %s", pubDate.Format("2006-January-02"), title)
 }
 
