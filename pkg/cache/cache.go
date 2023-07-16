@@ -51,6 +51,9 @@ func NewFeed(url, title string) *Feed {
 func (f *Feed) GetItemsOrderedByDate() []*Item {
 
 	slices.SortFunc(f.Items, func(a, b *Item) bool {
+		if a.PubDate == util.NoPubDate || b.PubDate == util.NoPubDate {
+			return strings.Compare(a.Title, b.Title) <= -1
+		}
 		return a.PubDate.After(b.PubDate)
 	})
 	return f.Items
@@ -154,7 +157,12 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 
 	newFeed := NewFeed(url, title)
 	for _, parsedItem := range parsedFeed.Items {
-		cachedItem := NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
+
+		pubDate := util.NoPubDate
+		if parsedItem.PublishedParsed != nil {
+			pubDate = *parsedItem.PublishedParsed
+		}
+		cachedItem := NewItem(parsedItem.Title, parsedItem.Link, pubDate)
 		newFeed.Items = append(newFeed.Items, cachedItem)
 	}
 	c.feeds = append(c.feeds, newFeed)
