@@ -23,6 +23,7 @@ func GetUrlsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	log.Default().Printf("found config dir: %q\n", configDirName)
 
 	appConfigDirName := filepath.Join(configDirName, app.Name)
 	if !Exists(appConfigDirName) {
