@@ -101,6 +101,16 @@ func readKeyStroke(fd uintptr) byte {
 				case 'F': // 70
 					return END_KEY
 				}
+			} else if seq[0] == 'e' && seq[1] == '[' && seq[2] == '2' {
+				subseq := make([]byte, 2)
+				if _, err := unix.Read(int(fd), subseq); err != nil {
+					return QUIT
+				}
+				if subseq[0] == '0' && subseq[1] == '0' {
+					log.Default().Println("started pasting")
+				} else if subseq[0] == '0' && subseq[1] == '1' {
+					log.Default().Println("done pasting")
+				}
 			}
 			return QUIT
 		} else {

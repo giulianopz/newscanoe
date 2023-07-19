@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/giulianopz/newscanoe/pkg/display"
 	"github.com/giulianopz/newscanoe/pkg/termios"
+	"github.com/giulianopz/newscanoe/pkg/xterm"
 )
 
 var (
@@ -75,6 +77,9 @@ func main() {
 				log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
 			}
 		}()
+
+		fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
+		fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
 
 		for d.ListenToKeyStroke {
 			d.RefreshScreen()
