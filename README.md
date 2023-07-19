@@ -27,7 +27,7 @@ Supported key bindings:
 - `o`, open an article with the default browser for the user's desktop environment
 - `^`, `v`, move the cursor to the previous/next row
 - `Page Up`, `Page Down`, move the cursor to the previous/next page
-- `a`, insert manually a new feed url, then:
+- `a`, insert a new feed url by typing letter-by-letter or pasting it with CTRL+SHIFT+v, then:
     - `ENTER`, append it to the config file
     - `<`, `>`, move the cursor to the previous/next char
     - `BACKSPACE`, cancel last char
