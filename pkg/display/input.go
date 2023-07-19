@@ -55,6 +55,24 @@ func readKeyStroke(fd uintptr) byte {
 				log.Default().Printf("3rd keystroke byte: %v", seq[1])
 				log.Default().Printf("4th keystroke byte: %v", seq[2])
 
+				if seq[1] == '2' && seq[2] == '0' {
+					subseq := make([]byte, 2)
+
+					log.Default().Printf("4rd keystroke byte: %v", subseq[0])
+					log.Default().Printf("6th keystroke byte: %v", subseq[1])
+
+					if _, err := unix.Read(int(fd), subseq); err != nil {
+						return QUIT
+					}
+					if subseq[0] == '0' && subseq[1] == '~' {
+						log.Default().Println("started pasting")
+						return ascii.NULL
+					} else if subseq[0] == '1' && subseq[1] == '~' {
+						log.Default().Println("done pasting")
+						return ascii.NULL
+					}
+				}
+
 				// 48 and 57
 				if seq[1] >= '0' && seq[1] <= '9' {
 					// 126
@@ -101,16 +119,6 @@ func readKeyStroke(fd uintptr) byte {
 				case 'F': // 70
 					return END_KEY
 				}
-			} else if seq[0] == 'e' && seq[1] == '[' && seq[2] == '2' {
-				subseq := make([]byte, 2)
-				if _, err := unix.Read(int(fd), subseq); err != nil {
-					return QUIT
-				}
-				if subseq[0] == '0' && subseq[1] == '0' {
-					log.Default().Println("started pasting")
-				} else if subseq[0] == '0' && subseq[1] == '1' {
-					log.Default().Println("done pasting")
-				}
 			}
 			return QUIT
 		} else {
@@ -120,8 +128,6 @@ func readKeyStroke(fd uintptr) byte {
 }
 
 func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
-
-	// TODO copy from clipboard
 
 	input := readKeyStroke(fd)
 	if d.editingMode {
@@ -210,6 +216,9 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 func (d *display) whileEditing(input byte) {
 	switch {
+
+	case input == ascii.NULL:
+		log.Default().Println("pasting...")
 
 	case input == ARROW_LEFT:
 		if d.cx > 1 {
