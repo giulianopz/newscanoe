@@ -1,7 +1,7 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux (at the moment, at least) terminal emulators supporting [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. xterm-derived)
+- only for Linux terminal emulators supporting standard [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. xterm-derived)
 - written in Go but rigorously nonglamorous (i.e. vim-like)
 - meant to be lighter and easier to build from source and to distribute.
 
@@ -13,7 +13,7 @@ If such file does not already exist, it will be created at the first execution o
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
 
-Currently, the app uses just the default foreground colour (+ red/green as feedbacks to user actions) of your terminal theme to highlight the different UI components.
+Currently, the app uses just the default foreground colour (+ few colors as feedbacks to user actions) of your terminal theme to highlight the different UI components.
 
 ### Keybindings
 
@@ -27,11 +27,7 @@ Supported key bindings:
 - `o`, open an article with the default browser for the user's desktop environment
 - `^`, `v`, move the cursor to the previous/next row
 - `Page Up`, `Page Down`, move the cursor to the previous/next page
-- `a`, insert a new feed url by typing letter-by-letter or pasting it with CTRL+SHIFT+v, then:
-    - `ENTER`, append it to the config file
-    - `<`, `>`, move the cursor to the previous/next char
-    - `BACKSPACE`, cancel last char
-    - `CANC`, cancel currently highlighted char
+- `a`, insert a new feed url by typing it letter-by-letter or pasting it with CTRL+SHIFT+v
 
 ### Installation
 
