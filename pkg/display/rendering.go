@@ -106,9 +106,31 @@ func (d *display) renderArticleText() {
 		if len(line) < textSpace {
 			line = append(line, c)
 		} else {
-			d.rendered = append(d.rendered, add(margin, line))
-			line = make([]rune, 0)
-			line = append(line, c)
+
+			if line[len(line)-1] != ' ' {
+
+				var lastIdx int = len(line)
+				tmp := make([]rune, 0)
+				for i := lastIdx - 1; i >= 0; i-- {
+					lastIdx--
+					if line[i] != ' ' {
+						tmp = append([]rune{line[i]}, tmp...)
+					} else {
+						break
+					}
+				}
+
+				d.rendered = append(d.rendered, add(margin, line[:lastIdx]))
+
+				line = make([]rune, 0)
+				line = append(line, tmp...)
+				line = append(line, c)
+			} else {
+				d.rendered = append(d.rendered, add(margin, line))
+				line = make([]rune, 0)
+				line = append(line, c)
+			}
+
 		}
 	}
 
