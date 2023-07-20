@@ -64,10 +64,10 @@ type display struct {
 
 	mu sync.Mutex
 
-	// dislay raw text
+	// display raw text
 	raw [][]byte
-	// dislay rendered text
-	rendered [][]byte
+	// display rendered text
+	rendered [][]rune
 	// gob cache
 	cache *cache.Cache
 
@@ -151,7 +151,7 @@ func (d *display) appendToRaw(s string) {
 }
 
 func (d *display) appendToRendered(s string) {
-	d.rendered = append(d.rendered, []byte(s))
+	d.rendered = append(d.rendered, []rune(s))
 }
 
 func (d *display) currentRow() int {
@@ -170,7 +170,7 @@ func (d *display) resetCoordinates() {
 
 func (d *display) resetRows() {
 	d.raw = make([][]byte, 0)
-	d.rendered = make([][]byte, 0)
+	d.rendered = make([][]rune, 0)
 }
 
 func (d *display) insertCharAt(c string, i int) {

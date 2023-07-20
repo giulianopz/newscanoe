@@ -19,7 +19,7 @@ func (d *display) renderURLs() {
 		cached[cachedFeed.Url] = cachedFeed
 	}
 
-	d.rendered = make([][]byte, 0)
+	d.rendered = make([][]rune, 0)
 	for row := range d.raw {
 		url := d.raw[row]
 		if !strings.Contains(string(url), "#") {
@@ -46,7 +46,7 @@ func (d *display) renderArticlesList() {
 		}
 	}
 
-	d.rendered = make([][]byte, 0)
+	d.rendered = make([][]rune, 0)
 	if currentFeed != nil {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
 			if item.New {
@@ -82,8 +82,8 @@ func (d *display) renderArticleText() {
 		}
 	}
 
-	d.rendered = make([][]byte, 0)
-	line := make([]byte, 0)
+	d.rendered = make([][]rune, 0)
+	line := make([]rune, 0)
 	for _, c := range runes {
 
 		if c == '\r' || c == '\n' {
@@ -91,8 +91,8 @@ func (d *display) renderArticleText() {
 			if len(line) != 0 {
 				d.rendered = append(d.rendered, add(margin, line))
 			}
-			d.rendered = append(d.rendered, []byte{})
-			line = make([]byte, 0)
+			d.rendered = append(d.rendered, []rune{})
+			line = make([]rune, 0)
 			continue
 		}
 
@@ -104,11 +104,11 @@ func (d *display) renderArticleText() {
 		}
 
 		if len(line) < textSpace {
-			line = append(line, []byte(string(c))...)
+			line = append(line, c)
 		} else {
 			d.rendered = append(d.rendered, add(margin, line))
-			line = make([]byte, 0)
-			line = append(line, []byte(string(c))...)
+			line = make([]rune, 0)
+			line = append(line, c)
 		}
 	}
 
@@ -117,9 +117,9 @@ func (d *display) renderArticleText() {
 	}
 }
 
-func add(margin int, line []byte) []byte {
+func add(margin int, line []rune) []rune {
 	if margin != 0 {
-		padded := make([]byte, 0)
+		padded := make([]rune, 0)
 		for margin != 0 {
 			padded = append(padded, ' ')
 			margin--
