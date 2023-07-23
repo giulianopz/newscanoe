@@ -237,7 +237,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* top bar */
 
-	buf.WriteString(ansi.SetColors(ansi.BLACK_FG, d.barsColor))
 	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
 
 	padding := d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(d.topBarMsg) - 2
@@ -256,7 +255,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 	/* main content */
 
 	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-	buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
 
 	for k := 0; k < d.width; k++ {
 		buf.WriteString("-")
@@ -281,8 +279,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-			buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
+
 			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
 		}
 
@@ -302,6 +299,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
+		buf.WriteString("\x1b[38;2;255;255;255m")
 		_, err := buf.Write([]byte(line))
 		if err != nil {
 			log.Default().Printf("cannot write byte array %q: %v", []byte(" "), err)
@@ -311,7 +309,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-			buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
 		}
 
 		printed++
@@ -336,7 +333,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 	log.Default().Printf("bottom-padding: %d", padding)
 
-	buf.WriteString(ansi.SetColors(ansi.BLACK_FG, d.barsColor))
 	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
 
 	if padding > 0 {
@@ -350,7 +346,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 	}
 
 	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-	buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
 }
 
 func (d *display) RefreshScreen() {

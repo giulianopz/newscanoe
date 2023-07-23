@@ -13,7 +13,7 @@ If such file does not already exist, it will be created at the first execution o
 
 Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
 
-Currently, the app uses just the default foreground colour (+ few colors as feedbacks to user actions) of your terminal theme to highlight the different UI components.
+Currently, the app uses just the black and white colours (+ few other colors as feedbacks to user actions) to highlight the different UI components.
 
 ### Keybindings
 

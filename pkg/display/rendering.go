@@ -29,7 +29,7 @@ func (d *display) renderURLs() {
 			} else {
 				if cachedFeed.New {
 					d.appendToRendered(fmt.Sprintf("%s%s%s",
-						ansi.SGR(ansi.BOLD),
+						ansi.SGR(1),
 						cachedFeed.Title,
 						ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
 				} else {
@@ -54,7 +54,7 @@ func (d *display) renderArticlesList() {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
 			if item.New {
 				d.appendToRendered(fmt.Sprintf("%s%s%s",
-					ansi.SGR(ansi.BOLD),
+					ansi.SGR(1),
 					util.RenderArticleRow(item.PubDate, item.Title),
 					ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
 			} else {

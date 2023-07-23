@@ -38,7 +38,7 @@ func SetColors(fg, bg int) string {
 	colors := strings.Join([]string{
 		strconv.Itoa(fg),
 		strconv.Itoa(bg),
-	}, ",")
+	}, ";")
 	return fmt.Sprintf(SGR_FMT, colors)
 }
 

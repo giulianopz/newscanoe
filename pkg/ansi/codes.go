@@ -13,8 +13,6 @@ const (
 
 	BLACK_BG = 40
 
-	DEFAULT_FG_COLOR = 39
-	DEFAULT_BG_COLOR = 49
 	// display attributes
 	ALL_ATTRIBUTES_OFF = 0
 	BOLD               = 1
