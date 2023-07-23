@@ -235,8 +235,10 @@ func (d *display) canBeParsed(url string) bool {
 
 func (d *display) draw(buf *bytes.Buffer) {
 
+	/* top bar */
+
+	buf.WriteString(ansi.SetColors(ansi.BLACK_FG, d.barsColor))
 	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
-	buf.WriteString(ansi.SGR(d.barsColor))
 
 	padding := d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(d.topBarMsg) - 2
 	log.Default().Printf("top-padding: %d", padding)
@@ -251,8 +253,10 @@ func (d *display) draw(buf *bytes.Buffer) {
 		buf.WriteString(fmt.Sprintf("%s\r\n", app.Version))
 	}
 
+	/* main content */
+
 	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-	buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
+	buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
 
 	for k := 0; k < d.width; k++ {
 		buf.WriteString("-")
@@ -277,8 +281,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
+			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+			buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
 			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
-			buf.WriteString(ansi.SGR(ansi.WHITE_FG))
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
@@ -306,7 +311,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-			buf.WriteString(ansi.SGR(ansi.DEFAULT_FG_COLOR))
+			buf.WriteString(ansi.SetColors(ansi.WHITE_FG, ansi.BLACK_BG))
 		}
 
 		printed++
@@ -315,6 +320,8 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for ; printed < d.height-BOTTOM_PADDING-TOP_PADDING; printed++ {
 		buf.WriteString("\r\n")
 	}
+
+	/* bottom bar */
 
 	for k := 0; k < d.width; k++ {
 		buf.WriteString("-")
@@ -329,8 +336,8 @@ func (d *display) draw(buf *bytes.Buffer) {
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 	log.Default().Printf("bottom-padding: %d", padding)
 
+	buf.WriteString(ansi.SetColors(ansi.BLACK_FG, d.barsColor))
 	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
-	buf.WriteString(ansi.SGR(d.barsColor))
 
 	if padding > 0 {
 		buf.WriteString(fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner))

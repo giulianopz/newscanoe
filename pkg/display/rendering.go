@@ -28,7 +28,10 @@ func (d *display) renderURLs() {
 				d.appendToRendered(string(url))
 			} else {
 				if cachedFeed.New {
-					d.appendToRendered(fmt.Sprintf("%s%s%s", ansi.SGR(ansi.BOLD), cachedFeed.Title, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+					d.appendToRendered(fmt.Sprintf("%s%s%s",
+						ansi.SGR(ansi.BOLD),
+						cachedFeed.Title,
+						ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
 				} else {
 					d.appendToRendered(cachedFeed.Title)
 				}
@@ -50,7 +53,10 @@ func (d *display) renderArticlesList() {
 	if currentFeed != nil {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
 			if item.New {
-				d.appendToRendered(fmt.Sprintf("%s%s%s", ansi.SGR(ansi.BOLD), util.RenderArticleRow(item.PubDate, item.Title), ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+				d.appendToRendered(fmt.Sprintf("%s%s%s",
+					ansi.SGR(ansi.BOLD),
+					util.RenderArticleRow(item.PubDate, item.Title),
+					ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
 			} else {
 				d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
 			}
