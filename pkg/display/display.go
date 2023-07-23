@@ -53,8 +53,6 @@ type display struct {
 	height int
 	width  int
 
-	// color of top and bottom bars
-	barsColor int
 	// message displayed in the bottom bar
 	topBarMsg string
 	// message displayed in the bottom bar
@@ -93,7 +91,6 @@ func New() *display {
 		startoff:          0,
 		endoff:            0,
 		cache:             cache.NewCache(),
-		barsColor:         ansi.WHITE_FG,
 		ListenToKeyStroke: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
@@ -118,7 +115,6 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	d.setBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.barsColor = ansi.WHITE_FG
 			d.setBottomMessage(previous)
 		})
 	}()
@@ -210,7 +206,6 @@ func (d *display) LoadCache() error {
 func (d *display) exitEditingMode(color int) {
 	d.editingMode = false
 	d.editingBuf = []string{}
-	d.barsColor = color
 }
 
 func (d *display) enterEditingMode() {
