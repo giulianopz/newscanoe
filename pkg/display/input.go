@@ -264,7 +264,7 @@ func (d *display) whileEditing(input byte) {
 		{
 			d.setBottomMessage(urlsListSectionMsg)
 			d.setTmpBottomMessage(1*time.Second, "editing aborted!")
-			d.exitEditingMode(ansi.WHITE)
+			d.exitEditingMode(ansi.WHITE_FG)
 			d.resetCoordinates()
 		}
 	default:

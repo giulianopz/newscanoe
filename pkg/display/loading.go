@@ -240,7 +240,7 @@ func (d *display) addEnteredFeedUrl() {
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
 	if !d.canBeParsed(url) {
-		d.barsColor = ansi.RED
+		d.barsColor = ansi.RED_FG
 		d.setTmpBottomMessage(3*time.Second, "feed url not valid!")
 		return
 	}
@@ -248,7 +248,7 @@ func (d *display) addEnteredFeedUrl() {
 	if err := util.AppendUrl(url); err != nil {
 		log.Default().Println(err)
 
-		d.barsColor = ansi.RED
+		d.barsColor = ansi.RED_FG
 
 		var target *util.UrlAlreadyPresentErr
 		if errors.As(err, &target) {
@@ -269,5 +269,5 @@ func (d *display) addEnteredFeedUrl() {
 
 	d.setBottomMessage(urlsListSectionMsg)
 	d.setTmpBottomMessage(3*time.Second, "new feed saved!")
-	d.exitEditingMode(ansi.GREEN)
+	d.exitEditingMode(ansi.GREEN_FG)
 }

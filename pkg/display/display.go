@@ -93,7 +93,7 @@ func New() *display {
 		startoff:          0,
 		endoff:            0,
 		cache:             cache.NewCache(),
-		barsColor:         ansi.WHITE,
+		barsColor:         ansi.WHITE_FG,
 		ListenToKeyStroke: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
@@ -118,7 +118,7 @@ func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	d.setBottomMessage(msg)
 	go func() {
 		time.AfterFunc(t, func() {
-			d.barsColor = ansi.WHITE
+			d.barsColor = ansi.WHITE_FG
 			d.setBottomMessage(previous)
 		})
 	}()
@@ -278,7 +278,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
 			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
-			buf.WriteString(ansi.SGR(ansi.WHITE))
+			buf.WriteString(ansi.SGR(ansi.WHITE_FG))
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
