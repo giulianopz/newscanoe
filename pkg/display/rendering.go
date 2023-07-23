@@ -121,16 +121,14 @@ func (d *display) renderArticleText() {
 				}
 
 				d.rendered = append(d.rendered, add(margin, line[:lastIdx]))
-
-				line = make([]rune, 0)
-				line = append(line, tmp...)
-				line = append(line, c)
+				line = tmp
 			} else {
+
 				d.rendered = append(d.rendered, add(margin, line))
 				line = make([]rune, 0)
-				line = append(line, c)
 			}
 
+			line = append(line, c)
 		}
 	}
 
