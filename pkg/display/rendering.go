@@ -1,7 +1,6 @@
 package display
 
 import (
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -19,21 +18,18 @@ func (d *display) renderURLs() {
 		cached[cachedFeed.Url] = cachedFeed
 	}
 
-	d.rendered = make([][]rune, 0)
+	d.rendered = make([][]*cell, 0)
 	for row := range d.raw {
 		url := d.raw[row]
 		if !strings.Contains(string(url), "#") {
 			cachedFeed, present := cached[string(url)]
 			if !present {
-				d.appendToRendered(string(url))
+				d.appendToRendered(fromString(string(url)))
 			} else {
 				if cachedFeed.New {
-					d.appendToRendered(fmt.Sprintf("%s%s%s",
-						ansi.SGR(1),
-						cachedFeed.Title,
-						ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+					d.appendToRendered(fromStringWithStyle(cachedFeed.Title, ansi.BOLD))
 				} else {
-					d.appendToRendered(cachedFeed.Title)
+					d.appendToRendered(fromString(cachedFeed.Title))
 				}
 			}
 		}
@@ -49,16 +45,13 @@ func (d *display) renderArticlesList() {
 		}
 	}
 
-	d.rendered = make([][]rune, 0)
+	d.rendered = make([][]*cell, 0)
 	if currentFeed != nil {
 		for _, item := range currentFeed.GetItemsOrderedByDate() {
 			if item.New {
-				d.appendToRendered(fmt.Sprintf("%s%s%s",
-					ansi.SGR(1),
-					util.RenderArticleRow(item.PubDate, item.Title),
-					ansi.SGR(ansi.ALL_ATTRIBUTES_OFF)))
+				d.appendToRendered(fromStringWithStyle(util.RenderArticleRow(item.PubDate, item.Title), ansi.BOLD))
 			} else {
-				d.appendToRendered(util.RenderArticleRow(item.PubDate, item.Title))
+				d.appendToRendered(fromString(util.RenderArticleRow(item.PubDate, item.Title)))
 			}
 		}
 	} else {
@@ -88,8 +81,8 @@ func (d *display) renderArticleText() {
 		}
 	}
 
-	d.rendered = make([][]rune, 0)
-	line := make([]rune, 0)
+	d.rendered = make([][]*cell, 0)
+	line := make([]*cell, 0)
 	for _, c := range runes {
 
 		if c == '\r' || c == '\n' {
@@ -97,30 +90,30 @@ func (d *display) renderArticleText() {
 			if len(line) != 0 {
 				d.rendered = append(d.rendered, add(margin, line))
 			}
-			d.rendered = append(d.rendered, []rune{})
-			line = make([]rune, 0)
+			d.rendered = append(d.rendered, []*cell{})
+			line = make([]*cell, 0)
 			continue
 		}
 
 		if c == '\t' {
 			for i := 0; i < 4; i++ {
-				line = append(line, ' ')
+				line = append(line, newCell(' '))
 			}
 			continue
 		}
 
 		if len(line) < textSpace {
-			line = append(line, c)
+			line = append(line, newCell(c))
 		} else {
 
-			if line[len(line)-1] != ' ' {
+			if line[len(line)-1].char != ' ' {
 
 				var lastIdx int = len(line)
-				tmp := make([]rune, 0)
+				tmp := make([]*cell, 0)
 				for i := lastIdx - 1; i >= 0; i-- {
 					lastIdx--
-					if line[i] != ' ' {
-						tmp = append([]rune{line[i]}, tmp...)
+					if line[i].char != ' ' {
+						tmp = append([]*cell{line[i]}, tmp...)
 					} else {
 						break
 					}
@@ -131,10 +124,10 @@ func (d *display) renderArticleText() {
 			} else {
 
 				d.rendered = append(d.rendered, add(margin, line))
-				line = make([]rune, 0)
+				line = make([]*cell, 0)
 			}
 
-			line = append(line, c)
+			line = append(line, newCell(c))
 		}
 	}
 
@@ -143,11 +136,11 @@ func (d *display) renderArticleText() {
 	}
 }
 
-func add(margin int, line []rune) []rune {
+func add(margin int, line []*cell) []*cell {
 	if margin != 0 {
-		padded := make([]rune, 0)
+		padded := make([]*cell, 0)
 		for margin != 0 {
-			padded = append(padded, ' ')
+			padded = append(padded, newCell(' '))
 			margin--
 		}
 		padded = append(padded, line...)

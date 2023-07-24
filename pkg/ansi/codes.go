@@ -16,6 +16,7 @@ const (
 	// display attributes
 	ALL_ATTRIBUTES_OFF = 0
 	BOLD               = 1
+	FAINT              = 2
 	REVERSE_COLOR      = 7
 	SET_FG_COLOR       = 38
 	SET_BG_COLOR       = 48

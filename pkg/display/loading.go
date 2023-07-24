@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/html"
 	"github.com/giulianopz/newscanoe/pkg/util"
 )
@@ -266,5 +265,5 @@ func (d *display) addEnteredFeedUrl() {
 
 	d.setBottomMessage(urlsListSectionMsg)
 	d.setTmpBottomMessage(3*time.Second, "new feed saved!")
-	d.exitEditingMode(ansi.GREEN_FG)
+	d.exitEditingMode()
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/ascii"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"golang.org/x/sys/unix"
@@ -264,7 +263,7 @@ func (d *display) whileEditing(input byte) {
 		{
 			d.setBottomMessage(urlsListSectionMsg)
 			d.setTmpBottomMessage(1*time.Second, "editing aborted!")
-			d.exitEditingMode(ansi.WHITE_FG)
+			d.exitEditingMode()
 			d.resetCoordinates()
 		}
 	default:

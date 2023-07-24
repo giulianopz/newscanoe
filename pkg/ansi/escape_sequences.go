@@ -30,16 +30,16 @@ func MoveCursor(y, x int) string {
 
 // SGR sets display attributes
 // see: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
-func SGR(n int) string {
-	return fmt.Sprintf(SGR_FMT, strconv.Itoa(n))
+func SGR(nums ...int) string {
+	params := make([]string, 0)
+	for _, n := range nums {
+		params = append(params, strconv.Itoa(n))
+	}
+	return fmt.Sprintf(SGR_FMT, strings.Join(params, ";"))
 }
 
-func SetColors(fg, bg int) string {
-	colors := strings.Join([]string{
-		strconv.Itoa(fg),
-		strconv.Itoa(bg),
-	}, ";")
-	return fmt.Sprintf(SGR_FMT, colors)
+func WhiteFG() string {
+	return SGR(38, 2, 255, 255, 255)
 }
 
 func Erase(n int) string {

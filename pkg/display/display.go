@@ -40,6 +40,57 @@ const (
 	articleTextSectionMsg  = "HELP: \u232B = go back |  \u25B2 = scroll up | \u25BC = scroll down"
 )
 
+type cell struct {
+	char   rune
+	fg, bg [3]int
+	params []int
+}
+
+func newCell(c rune) *cell {
+	return &cell{
+		char: c,
+		//fg:   [3]int{255, 255, 255},
+		//params: []int{ansi.FAINT},
+	}
+}
+
+func fromString(s string) []*cell {
+	cells := make([]*cell, 0)
+	for _, r := range s {
+		cells = append(cells, newCell(r))
+	}
+	return cells
+}
+
+func fromStringWithStyle(s string, params ...int) []*cell {
+	cells := make([]*cell, 0)
+	for _, r := range s {
+		cells = append(cells, newCell(r).withStyle(params...))
+	}
+	return cells
+}
+
+func (c *cell) withStyle(a ...int) *cell {
+	c.params = make([]int, 0)
+	c.params = append(c.params, a...)
+	return c
+}
+
+func (c cell) String() string {
+	if len(c.params) == 0 {
+		return string(c.char)
+	}
+	return ansi.SGR(c.params...) + string(c.char)
+}
+
+func stringify(cells []*cell) string {
+	var ret string
+	for _, c := range cells {
+		ret += c.String()
+	}
+	return ret
+}
+
 type display struct {
 	// cursor's position within terminal window
 	cx int
@@ -65,7 +116,7 @@ type display struct {
 	// display raw text
 	raw [][]byte
 	// display rendered text
-	rendered [][]rune
+	rendered [][]*cell
 	// gob cache
 	cache *cache.Cache
 
@@ -146,8 +197,8 @@ func (d *display) appendToRaw(s string) {
 	d.raw = append(d.raw, []byte(s))
 }
 
-func (d *display) appendToRendered(s string) {
-	d.rendered = append(d.rendered, []rune(s))
+func (d *display) appendToRendered(cells []*cell) {
+	d.rendered = append(d.rendered, cells)
 }
 
 func (d *display) currentRow() int {
@@ -166,7 +217,7 @@ func (d *display) resetCoordinates() {
 
 func (d *display) resetRows() {
 	d.raw = make([][]byte, 0)
-	d.rendered = make([][]rune, 0)
+	d.rendered = make([][]*cell, 0)
 }
 
 func (d *display) insertCharAt(c string, i int) {
@@ -203,7 +254,7 @@ func (d *display) LoadCache() error {
 	return nil
 }
 
-func (d *display) exitEditingMode(color int) {
+func (d *display) exitEditingMode() {
 	d.editingMode = false
 	d.editingBuf = []string{}
 }
@@ -247,9 +298,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 		buf.WriteString(fmt.Sprintf("%s\r\n", app.Version))
 	}
 
-	/* main content */
-
 	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+
+	/* main content */
 
 	for k := 0; k < d.width; k++ {
 		buf.WriteString("-")
@@ -274,37 +325,30 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-
 			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
 		// if so, the "LANG" env variable should contain "UTF"
 
-		line := string(d.rendered[i])
-		if line == "" {
-			line = " "
-		} else {
-			runes := utf8.RuneCountInString(line)
-			if runes > d.width {
-				log.Default().Printf("truncating current line because its length %d exceeda screen width: %d\n", i, runes)
-				line = util.Truncate(line, d.width)
-			}
+		line := d.rendered[i]
+		if len(line) > d.width {
+			log.Default().Printf("truncating current line because its length %d exceeda screen width: %d\n", len(line), d.width)
+			line = line[:d.width]
 		}
 
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
-		buf.WriteString("\x1b[38;2;255;255;255m")
-		_, err := buf.Write([]byte(line))
+		_, err := buf.WriteString(stringify(line))
 		if err != nil {
-			log.Default().Printf("cannot write byte array %q: %v", []byte(" "), err)
+			log.Default().Printf("cannot write line: %v", err)
 		}
-
-		buf.WriteString("\r\n")
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 		}
+
+		buf.WriteString("\r\n")
 
 		printed++
 	}
