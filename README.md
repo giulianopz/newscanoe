@@ -39,7 +39,7 @@ Build from source:
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
 
-[![asciicast](https://asciinema.org/a/GmD6rN1s4vcQVT0xmlYOrlacq.svg)](https://asciinema.org/a/GmD6rN1s4vcQVT0xmlYOrlacq)
+[![asciicast](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4.svg)](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4)
 
 ### Development
 
