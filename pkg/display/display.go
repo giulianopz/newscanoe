@@ -12,6 +12,7 @@ import (
 
 	"github.com/giulianopz/newscanoe/pkg/ansi"
 	"github.com/giulianopz/newscanoe/pkg/app"
+	"github.com/giulianopz/newscanoe/pkg/ascii"
 	"github.com/giulianopz/newscanoe/pkg/cache"
 	"github.com/giulianopz/newscanoe/pkg/util"
 	"github.com/giulianopz/newscanoe/pkg/xterm"
@@ -67,18 +68,24 @@ func fromStringWithStyle(s string, params ...int) []*cell {
 	for _, r := range s {
 		cells = append(cells, newCell(r).withStyle(params...))
 	}
+	if len(cells) != 0 {
+		cells = append([]*cell{newCell(ascii.NULL).withStyle(params...)}, cells...)
+		cells = append(cells, newCell(ascii.NULL).withStyle(ansi.ALL_ATTRIBUTES_OFF))
+	}
 	return cells
 }
 
 func (c *cell) withStyle(a ...int) *cell {
-	c.params = make([]int, 0)
-	c.params = append(c.params, a...)
+	c.params = append(make([]int, 0), a...)
 	return c
 }
 
 func (c cell) String() string {
 	if len(c.params) == 0 {
 		return string(c.char)
+	}
+	if c.char == ascii.NULL {
+		return ansi.SGR(c.params...)
 	}
 	return ansi.SGR(c.params...) + string(c.char)
 }
@@ -283,27 +290,28 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* top bar */
 
-	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
 	padding := d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(d.topBarMsg) - 2
 	log.Default().Printf("top-padding: %d", padding)
 	if padding > 0 {
-		buf.WriteString(fmt.Sprintf("%s %s %*s\r\n", app.Name, d.topBarMsg, padding, app.Version))
+		write(buf, fmt.Sprintf("%s %s %*s\r\n", app.Name, d.topBarMsg, padding, app.Version), "cannot write top bar")
 	} else {
-		buf.WriteString(app.Name)
+		write(buf, app.Name, "cannot write top bar")
+
 		padding = d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(app.Version)
 		for i := padding; i > 0; i-- {
-			buf.WriteString(" ")
+			write(buf, " ", "cannot write empty char")
 		}
-		buf.WriteString(fmt.Sprintf("%s\r\n", app.Version))
+		write(buf, fmt.Sprintf("%s\r\n", app.Version), "cannot write app version")
 	}
 
-	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot write reset escape sequence")
 
 	/* main content */
 
 	for k := 0; k < d.width; k++ {
-		buf.WriteString("-")
+		write(buf, "-", "cannot write hyphen")
 	}
 
 	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING - TOP_PADDING) - 1
@@ -325,7 +333,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.startoff; i <= d.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+			write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 		}
 
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
@@ -339,30 +347,29 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
-		_, err := buf.WriteString(stringify(line))
-		if err != nil {
-			log.Default().Printf("cannot write line: %v", err)
-		}
+		write(buf, ansi.WhiteFG(), "cannot write escape for white foreground")
+
+		write(buf, stringify(line), "cannot write line")
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
-			buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+			write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot write reset escape sequence")
 		}
 
-		buf.WriteString("\r\n")
+		write(buf, "\r\n", "cannot write carriage return")
 
 		printed++
 	}
 
 	for ; printed < d.height-BOTTOM_PADDING-TOP_PADDING; printed++ {
-		buf.WriteString("\r\n")
+		write(buf, "\r\n", "cannot write carriage return")
 	}
 
 	/* bottom bar */
 
 	for k := 0; k < d.width; k++ {
-		buf.WriteString("-")
+		write(buf, "-", "cannot write hyphen")
 	}
-	buf.WriteString("\r\n")
+	write(buf, "\r\n", "cannot write carriage return")
 
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	if DebugMode {
@@ -372,19 +379,25 @@ func (d *display) draw(buf *bytes.Buffer) {
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 	log.Default().Printf("bottom-padding: %d", padding)
 
-	buf.WriteString(ansi.SGR(ansi.REVERSE_COLOR))
+	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
 	if padding > 0 {
-		buf.WriteString(fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner))
+		write(buf, fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner), "cannot write bottom right corner text")
 	} else {
 		padding = d.width - utf8.RuneCountInString(d.bottomRightCorner)
 		for i := padding; i > 0; i-- {
-			buf.WriteString(" ")
+			write(buf, " ", "cannot write empty string")
 		}
-		buf.WriteString(d.bottomRightCorner)
+		write(buf, d.bottomRightCorner, "cannot write bottom right corner text")
 	}
 
-	buf.WriteString(ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
+}
+
+func write(buf *bytes.Buffer, s, msg string) {
+	if _, err := buf.WriteString(s); err != nil {
+		log.Default().Printf("%s: %v", msg, err)
+	}
 }
 
 func (d *display) RefreshScreen() {
