@@ -339,17 +339,29 @@ func (d *display) draw(buf *bytes.Buffer) {
 		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
 		// if so, the "LANG" env variable should contain "UTF"
 
-		line := d.rendered[i]
-		if len(line) > d.width {
-			log.Default().Printf("truncating current line because its length %d exceeda screen width: %d\n", len(line), d.width)
-			line = line[:d.width]
+		row := d.rendered[i]
+
+		var runes int
+		for _, c := range row {
+			if c.char != ascii.NULL {
+				runes++
+			}
 		}
 
+		if runes > d.width {
+			log.Default().Printf("current line length %d exceeds screen width: %d\n", runes, d.width)
+			row = row[:d.width]
+		}
+
+		line := stringify(row)
+		if line == "" {
+			log.Default().Println("found empty row")
+			line = " "
+		}
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
 		write(buf, ansi.WhiteFG(), "cannot write escape for white foreground")
-
-		write(buf, stringify(line), "cannot write line")
+		write(buf, line, "cannot write line")
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
 			write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot write reset escape sequence")
