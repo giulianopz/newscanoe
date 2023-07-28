@@ -43,15 +43,12 @@ const (
 
 type cell struct {
 	char   rune
-	fg, bg [3]int
 	params []int
 }
 
 func newCell(c rune) *cell {
 	return &cell{
 		char: c,
-		//fg:   [3]int{255, 255, 255},
-		//params: []int{ansi.FAINT},
 	}
 }
 
