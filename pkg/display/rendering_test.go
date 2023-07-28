@@ -5,7 +5,8 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
-	"unicode/utf8"
+
+	"github.com/giulianopz/newscanoe/pkg/ascii"
 )
 
 func TestRenderText(t *testing.T) {
@@ -67,8 +68,14 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 		}
 
 		for row := range after {
-			if utf8.RuneCountInString(string(after[row])) > d.width {
-				diff := d.width - utf8.RuneCountInString(string(after[row]))
+			var currentRowLen int
+			for _, c := range after[row] {
+				if c.char != ascii.NULL {
+					currentRowLen++
+				}
+			}
+			if currentRowLen > d.width {
+				diff := d.width - currentRowLen
 				t.Errorf("row #%d is %d chars longer than window width", row, diff)
 			}
 		}
@@ -99,8 +106,14 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 		}
 
 		for row := range after {
-			if utf8.RuneCountInString(string(after[row])) > d.width {
-				diff := d.width - utf8.RuneCountInString(string(after[row]))
+			var currentRowLen int
+			for _, c := range after[row] {
+				if c.char != ascii.NULL {
+					currentRowLen++
+				}
+			}
+			if currentRowLen > d.width {
+				diff := d.width - currentRowLen
 				t.Errorf("row #%d is %d chars longer than window width", row, diff)
 			}
 		}
