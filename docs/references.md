@@ -23,6 +23,7 @@ VT100:
 
 Colors:
 - [How to change the color of your Linux terminal](https://opensource.com/article/19/9/linux-terminal-colors)
+- [Coloring Terminal Text: tput and ANSI Escape Sequences](https://www.codequoi.com/en/coloring-terminal-text-tput-and-ansi-escape-sequences/)
 
 Misc:
 - [Text Editor Data Structures](https://cdacamar.github.io/data%20structures/algorithms/benchmarking/text%20editors/c++/editor-data-structures/?utm_source=programmingdigest&utm_medium&utm_campaign=1663)
