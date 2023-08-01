@@ -5,6 +5,8 @@ Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https
 - written in Go but rigorously nonglamorous (i.e. vim-like)
 - meant to be lighter and easier to build from source and to distribute.
 
+A tool for all of you information junkies, as simple as you always secretly desired, to organize the internet and make sense of the web. 
+
 ### Configuration
 
 The only config file consists of urls of RSS/Atom feeds listed line-by-line (see the [urls sample file](./assets/urls)) and located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
@@ -41,34 +43,8 @@ Or download the latest pre-compiled binary from [GitHub](https://github.com/giul
 
 [![asciicast](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4.svg)](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4)
 
-### Development
-
-To work on the source code, start the app enabling debug mode with the `-d` flag and redirect stderr to a log file:
-```bash
-:~$ go run cmd/newscanoe/main.go -d  2> log 
-```
-
-To debug with Visual Studio Code, set the following `console` field in the `launch.json` file as follows:
-```
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            [...]
-            "console": "integratedTerminal",
-            [...]
-        }
-    ]
-}
-```
-
 ---
 
 ### Credits
 
 Much of the wizardry used to control the terminal was inspired by the well-written tutorial [Build Your Own Text Editor](https://viewsourcecode.org/snaptoken/kilo/) by [Paige Ruten](https://viewsourcecode.org/), which explains in depth the source code of [kilo](https://github.com/antirez/kilo), the infamous small text editor conceived by [Salvatore Sanfilippo aka antirez](http://invece.org/).
-
-### References
-
-- [Text Editor Data Structures](https://cdacamar.github.io/data%20structures/algorithms/benchmarking/text%20editors/c++/editor-data-structures/?utm_source=programmingdigest&utm_medium&utm_campaign=1663)
-- [Text Rendering Hates You](https://faultlore.com/blah/text-hates-you/)
