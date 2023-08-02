@@ -277,12 +277,18 @@ func ctrlPlus(k byte) byte {
 	return k & 0x1f
 }
 
-func (d *display) moveCursor(dir byte) {
+func (d *display) moveCursor(direction byte) {
 
 	var renderedRowsLen int = len(d.rendered) - 1
 
-	switch dir {
+	switch direction {
 	case ARROW_DOWN:
+
+		if d.currentSection == ARTICLE_TEXT && d.endoff < renderedRowsLen {
+			d.startoff++
+			return
+		}
+
 		if d.cy < (d.height - BOTTOM_PADDING - TOP_PADDING) {
 			if d.currentRow()+1 <= renderedRowsLen {
 				d.cy++
@@ -291,6 +297,12 @@ func (d *display) moveCursor(dir byte) {
 			d.startoff++
 		}
 	case ARROW_UP:
+
+		if d.currentSection == ARTICLE_TEXT && d.startoff > 0 {
+			d.startoff--
+			return
+		}
+
 		if d.cy > 1 {
 			if d.currentRow()-1 <= renderedRowsLen {
 				d.cy--
