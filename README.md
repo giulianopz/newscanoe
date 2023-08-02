@@ -1,7 +1,7 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- only for Linux terminal emulators supporting standard [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. xterm-derived)
+- for UNIX systems and terminal emulators supporting standard [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. xterm-derived)
 - written in Go but rigorously nonglamorous (i.e. vim-like)
 - meant to be lighter and easier to build from source and to distribute.
 
@@ -25,8 +25,8 @@ Supported key bindings:
 - `q`, quit the app
 - `BACKSPACE`, go back to previous section
 - `ENTER`, go into the currently highlighted element
-- `l`, open an article with `lynx` if installed in the system 
-- `o`, open an article with the default browser for the user's desktop environment
+- `l`, open an article with `lynx` (if installed in the system)
+- `o`, open an article with the default (according to xdg-settings) browser for the user's desktop environment
 - `^`, `v`, move the cursor to the previous/next row
 - `Page Up`, `Page Down`, move the cursor to the previous/next page
 - `a`, insert a new feed url by typing it letter-by-letter or pasting it with CTRL+SHIFT+v
@@ -39,7 +39,7 @@ Build from source:
 :~$ go build -o newscanoe cmd/newscanoe/main.go && cp ./newscanoe /usr/local/bin
 ```
 
-Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it in your PATH.
+Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it into your PATH.
 
 [![asciicast](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4.svg)](https://asciinema.org/a/m4OS1laCYjaudIjMWETJiFjS4)
 
