@@ -186,9 +186,17 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 			switch d.currentSection {
 			case URLS_LIST:
-				d.loadArticlesList(d.currentUrl())
+				{
+					d.prevcy, d.prevcx = d.cy, d.cx
+					d.prevso, d.preveo = d.startoff, d.endoff
+					d.loadArticlesList(d.currentUrl())
+				}
 			case ARTICLES_LIST:
-				d.loadArticleText(d.currentUrl())
+				{
+					d.prevcy, d.prevcx = d.cy, d.cx
+					d.prevso, d.preveo = d.startoff, d.endoff
+					d.loadArticleText(d.currentUrl())
+				}
 			}
 		}
 
@@ -196,13 +204,23 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		{
 			switch d.currentSection {
 			case ARTICLES_LIST:
-				if err := d.LoadURLs(); err != nil {
-					log.Default().Printf("cannot load urls: %v", err)
+				{
+					if err := d.LoadURLs(); err != nil {
+						log.Default().Printf("cannot load urls: %v", err)
+					}
+					d.currentFeedUrl = ""
+
+					d.cy, d.cx, d.startoff, d.endoff = d.prevcy, d.prevcx, d.prevso, d.preveo
+					d.prevcy, d.prevcx, d.prevso, d.preveo = 1, 1, 0, 0
 				}
-				d.currentFeedUrl = ""
 			case ARTICLE_TEXT:
-				d.loadArticlesList(d.currentFeedUrl)
-				d.currentArticleUrl = ""
+				{
+					d.loadArticlesList(d.currentFeedUrl)
+					d.currentArticleUrl = ""
+
+					d.cy, d.cx, d.startoff, d.endoff = d.prevcy, d.prevcx, d.prevso, d.preveo
+					d.prevcy, d.prevcx, d.prevso, d.preveo = 1, 1, 0, 0
+				}
 			}
 		}
 

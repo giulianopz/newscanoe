@@ -96,13 +96,13 @@ func stringify(cells []*cell) string {
 }
 
 type display struct {
-	// cursor's position within terminal window
-	cx int
-	cy int
+	// current and previous cursor's position within terminal window
+	cx, prevcx int
+	cy, prevcy int
 
-	// offsets of rendered text window
-	startoff int
-	endoff   int
+	// current and previous offsets of rendered text window
+	startoff, prevso int
+	endoff, preveo   int
 
 	// size of terminal window
 	height int
