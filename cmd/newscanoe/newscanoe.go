@@ -1,4 +1,4 @@
-package main
+package newscanoe
 
 import (
 	"flag"
@@ -24,7 +24,7 @@ var (
 	}
 )
 
-func main() {
+func Run() {
 
 	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
 	flag.Parse()
@@ -81,7 +81,7 @@ func main() {
 		fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
 		fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
 
-		for d.ListenToKeyStroke {
+		for d.ListenToKeyStrokes {
 			d.RefreshScreen()
 			d.ProcessKeyStroke(os.Stdin.Fd(), quitC)
 		}

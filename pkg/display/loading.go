@@ -258,8 +258,8 @@ func (d *display) addEnteredFeedUrl() {
 	d.appendToRaw(url)
 
 	d.cx = 1
-	d.cy = len(d.raw) % (d.height - BOTTOM_PADDING - TOP_PADDING)
-	d.startoff = (len(d.raw) - 1) / (d.height - BOTTOM_PADDING - TOP_PADDING) * (d.height - BOTTOM_PADDING - TOP_PADDING)
+	d.cy = len(d.raw) % d.getContentWindowLen()
+	d.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
 
 	d.loadFeed(url)
 

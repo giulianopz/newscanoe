@@ -95,12 +95,29 @@ func stringify(cells []*cell) string {
 	return ret
 }
 
+/*
+display is the core struct handling the whole state of the application:
+it draws the UI handling the displayed textual content as a window
+which slides over a 2-dimensional array (raw and rendered)
+enclosed by two bars displaying some navigation context to the user
+----------------
+|   top-bar    |
+|______________|
+|              |<-startoff
+|              |
+|  I           |<-(cx,cy)
+|              |
+|              |
+|______________|<-endoff
+|  bottom-bar  |
+----------------
+*/
 type display struct {
-	// current and previous cursor's position within terminal window
+	// current and previous cursor's position within visible content window
 	cx, prevcx int
 	cy, prevcy int
 
-	// current and previous offsets of rendered text window
+	// current and previous offsets of rendered content window
 	startoff, prevso int
 	endoff, preveo   int
 
@@ -131,7 +148,7 @@ type display struct {
 	currentArticleUrl string
 	currentFeedUrl    string
 
-	ListenToKeyStroke bool
+	ListenToKeyStrokes bool
 
 	client *http.Client
 
@@ -141,18 +158,36 @@ type display struct {
 func New() *display {
 
 	d := &display{
-		cx:                1,
-		cy:                1,
-		startoff:          0,
-		endoff:            0,
-		cache:             cache.NewCache(),
-		ListenToKeyStroke: true,
+		cx:                 1,
+		cy:                 1,
+		startoff:           0,
+		endoff:             0,
+		cache:              cache.NewCache(),
+		ListenToKeyStrokes: true,
 		client: &http.Client{
 			Timeout: 3 * time.Second,
 		},
 		parser: gofeed.NewParser(),
 	}
 	return d
+}
+
+func (d *display) setMaxEndOff() {
+	d.endoff = d.startoff + d.getContentWindowLen() - 1
+	if d.endoff > (len(d.rendered) - 1) {
+		d.endoff = (len(d.rendered) - 1)
+	}
+
+	if !d.editingMode {
+		max := d.endoff - d.startoff + 1
+		if d.cy > max {
+			d.cy = max
+		}
+	}
+}
+
+func (d *display) getContentWindowLen() int {
+	return d.height - BOTTOM_PADDING - TOP_PADDING
 }
 
 func (d *display) setTopMessage(msg string) {
@@ -185,7 +220,7 @@ func (d *display) Quit(quitC chan bool) {
 
 	log.Default().Println("quitting")
 
-	d.ListenToKeyStroke = false
+	d.ListenToKeyStrokes = false
 
 	fmt.Fprint(os.Stdout, ansi.ShowCursor())
 	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
@@ -311,19 +346,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 		write(buf, "-", "cannot write hyphen")
 	}
 
-	nextEndOff := d.startoff + (d.height - BOTTOM_PADDING - TOP_PADDING) - 1
-	if nextEndOff > (len(d.rendered) - 1) {
-		d.endoff = (len(d.rendered) - 1)
-	} else {
-		d.endoff = nextEndOff
-	}
-
-	if !d.editingMode {
-		renderedRowsNum := d.endoff - d.startoff + 1
-		if d.cy > renderedRowsNum {
-			d.cy = renderedRowsNum
-		}
-	}
+	d.setMaxEndOff()
 
 	log.Default().Printf("looping from %d to %d: %d\n", d.startoff, d.endoff, d.endoff-d.startoff)
 	var printed int
@@ -332,9 +355,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
 			write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 		}
-
-		// TODO check that the terminal supports Unicode output, before outputting a Unicode character
-		// if so, the "LANG" env variable should contain "UTF"
 
 		row := d.rendered[i]
 
@@ -380,6 +400,8 @@ func (d *display) draw(buf *bytes.Buffer) {
 	}
 	write(buf, "\r\n", "cannot write carriage return")
 
+	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
+
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
 	if DebugMode {
 		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
@@ -387,8 +409,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
 	log.Default().Printf("bottom-padding: %d", padding)
-
-	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
 	if padding > 0 {
 		write(buf, fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner), "cannot write bottom right corner text")

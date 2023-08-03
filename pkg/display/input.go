@@ -302,12 +302,14 @@ func (d *display) moveCursor(direction byte) {
 	switch direction {
 	case ARROW_DOWN:
 
-		if d.currentSection == ARTICLE_TEXT && d.endoff < renderedRowsLen {
-			d.startoff++
+		if d.currentSection == ARTICLE_TEXT {
+			if d.endoff < renderedRowsLen {
+				d.startoff++
+			}
 			return
 		}
 
-		if d.cy < (d.height - BOTTOM_PADDING - TOP_PADDING) {
+		if d.cy < d.getContentWindowLen() {
 			if d.currentRow()+1 <= renderedRowsLen {
 				d.cy++
 			}
@@ -316,8 +318,10 @@ func (d *display) moveCursor(direction byte) {
 		}
 	case ARROW_UP:
 
-		if d.currentSection == ARTICLE_TEXT && d.startoff > 0 {
-			d.startoff--
+		if d.currentSection == ARTICLE_TEXT {
+			if d.startoff > 0 {
+				d.startoff--
+			}
 			return
 		}
 
@@ -336,10 +340,11 @@ func (d *display) scroll(dir byte) {
 	switch dir {
 	case PAGE_DOWN:
 		{
-			var renderedRowsLen int = len(d.rendered) - 1
 
+			d.cy = d.getContentWindowLen()
+
+			var renderedRowsLen int = len(d.rendered) - 1
 			if d.endoff == renderedRowsLen {
-				d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
 				return
 			}
 
@@ -350,25 +355,22 @@ func (d *display) scroll(dir byte) {
 				d.startoff++
 				d.endoff = renderedRowsLen
 			}
-
-			d.cy = d.height - BOTTOM_PADDING - TOP_PADDING
 		}
 	case PAGE_UP:
 		{
+			d.cy = 1
+
 			if d.startoff == 0 {
-				d.cy = 1
 				return
 			}
 
-			firstItemInPreviousPage := d.startoff - (d.height - BOTTOM_PADDING - TOP_PADDING)
+			firstItemInPreviousPage := d.startoff - d.getContentWindowLen()
 			if firstItemInPreviousPage >= 0 {
 				d.startoff = firstItemInPreviousPage
 			} else {
 				d.startoff = 0
-				d.endoff = d.height - BOTTOM_PADDING - TOP_PADDING - 1
+				d.endoff = d.getContentWindowLen() - 1
 			}
-
-			d.cy = 1
 		}
 	}
 }
