@@ -57,8 +57,8 @@ func (d *display) LoadURLs() error {
 
 	d.setTopMessage("")
 
-	d.cy = 1
-	d.cx = 1
+	d.current.cy = 1
+	d.current.cx = 1
 	d.currentSection = URLS_LIST
 	return nil
 }
@@ -257,9 +257,9 @@ func (d *display) addEnteredFeedUrl() {
 
 	d.appendToRaw(url)
 
-	d.cx = 1
-	d.cy = len(d.raw) % d.getContentWindowLen()
-	d.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
+	d.current.cx = 1
+	d.current.cy = len(d.raw) % d.getContentWindowLen()
+	d.current.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
 
 	d.loadFeed(url)
 

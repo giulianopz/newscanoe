@@ -187,14 +187,12 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			switch d.currentSection {
 			case URLS_LIST:
 				{
-					d.prevcy, d.prevcx = d.cy, d.cx
-					d.prevso, d.preveo = d.startoff, d.endoff
+					d.trackPos()
 					d.loadArticlesList(d.currentUrl())
 				}
 			case ARTICLES_LIST:
 				{
-					d.prevcy, d.prevcx = d.cy, d.cx
-					d.prevso, d.preveo = d.startoff, d.endoff
+					d.trackPos()
 					d.loadArticleText(d.currentUrl())
 				}
 			}
@@ -209,17 +207,13 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 						log.Default().Printf("cannot load urls: %v", err)
 					}
 					d.currentFeedUrl = ""
-
-					d.cy, d.cx, d.startoff, d.endoff = d.prevcy, d.prevcx, d.prevso, d.preveo
-					d.prevcy, d.prevcx, d.prevso, d.preveo = 1, 1, 0, 0
+					d.restorePos()
 				}
 			case ARTICLE_TEXT:
 				{
 					d.loadArticlesList(d.currentFeedUrl)
 					d.currentArticleUrl = ""
-
-					d.cy, d.cx, d.startoff, d.endoff = d.prevcy, d.prevcx, d.prevso, d.preveo
-					d.prevcy, d.prevcx, d.prevso, d.preveo = 1, 1, 0, 0
+					d.restorePos()
 				}
 			}
 		}
@@ -238,18 +232,18 @@ func (d *display) whileEditing(input byte) {
 		log.Default().Println("pasting...")
 
 	case input == ARROW_LEFT:
-		if d.cx > 1 {
-			d.cx--
+		if d.current.cx > 1 {
+			d.current.cx--
 		}
 
 	case input == ARROW_RIGHT:
-		if d.cx < len(d.editingBuf)+1 {
-			d.cx++
+		if d.current.cx < len(d.editingBuf)+1 {
+			d.current.cx++
 		}
 
 	case input == DEL_KEY:
 		{
-			i := d.cx - 1
+			i := d.current.cx - 1
 			if i < len(d.editingBuf) {
 				d.deleteCharAt(i)
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
@@ -258,10 +252,10 @@ func (d *display) whileEditing(input byte) {
 
 	case input == ascii.BACKSPACE:
 		{
-			if len(d.editingBuf) != 0 && d.cx == len(d.editingBuf)+1 {
+			if len(d.editingBuf) != 0 && d.current.cx == len(d.editingBuf)+1 {
 				d.deleteCharAt(len(d.editingBuf) - 1)
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
-				d.cx--
+				d.current.cx--
 			}
 		}
 	case input == ascii.ENTER:
@@ -270,11 +264,11 @@ func (d *display) whileEditing(input byte) {
 		}
 	case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 		{
-			if d.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
-				i := d.cx - 1
+			if d.current.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
+				i := d.current.cx - 1
 				d.insertCharAt(string(input), i)
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
-				d.cx++
+				d.current.cx++
 			}
 		}
 	case input == QUIT:
@@ -303,34 +297,34 @@ func (d *display) moveCursor(direction byte) {
 	case ARROW_DOWN:
 
 		if d.currentSection == ARTICLE_TEXT {
-			if d.endoff < renderedRowsLen {
-				d.startoff++
+			if d.current.endoff < renderedRowsLen {
+				d.current.startoff++
 			}
 			return
 		}
 
-		if d.cy < d.getContentWindowLen() {
+		if d.current.cy < d.getContentWindowLen() {
 			if d.currentRow()+1 <= renderedRowsLen {
-				d.cy++
+				d.current.cy++
 			}
-		} else if d.endoff < renderedRowsLen {
-			d.startoff++
+		} else if d.current.endoff < renderedRowsLen {
+			d.current.startoff++
 		}
 	case ARROW_UP:
 
 		if d.currentSection == ARTICLE_TEXT {
-			if d.startoff > 0 {
-				d.startoff--
+			if d.current.startoff > 0 {
+				d.current.startoff--
 			}
 			return
 		}
 
-		if d.cy > 1 {
+		if d.current.cy > 1 {
 			if d.currentRow()-1 <= renderedRowsLen {
-				d.cy--
+				d.current.cy--
 			}
-		} else if d.startoff > 0 {
-			d.startoff--
+		} else if d.current.startoff > 0 {
+			d.current.startoff--
 		}
 	}
 }
@@ -341,35 +335,35 @@ func (d *display) scroll(dir byte) {
 	case PAGE_DOWN:
 		{
 
-			d.cy = d.getContentWindowLen()
+			d.current.cy = d.getContentWindowLen()
 
 			var renderedRowsLen int = len(d.rendered) - 1
-			if d.endoff == renderedRowsLen {
+			if d.current.endoff == renderedRowsLen {
 				return
 			}
 
-			firstItemInNextPage := d.endoff + 1
+			firstItemInNextPage := d.current.endoff + 1
 			if firstItemInNextPage < renderedRowsLen {
-				d.startoff = firstItemInNextPage
+				d.current.startoff = firstItemInNextPage
 			} else {
-				d.startoff++
-				d.endoff = renderedRowsLen
+				d.current.startoff++
+				d.current.endoff = renderedRowsLen
 			}
 		}
 	case PAGE_UP:
 		{
-			d.cy = 1
+			d.current.cy = 1
 
-			if d.startoff == 0 {
+			if d.current.startoff == 0 {
 				return
 			}
 
-			firstItemInPreviousPage := d.startoff - d.getContentWindowLen()
+			firstItemInPreviousPage := d.current.startoff - d.getContentWindowLen()
 			if firstItemInPreviousPage >= 0 {
-				d.startoff = firstItemInPreviousPage
+				d.current.startoff = firstItemInPreviousPage
 			} else {
-				d.startoff = 0
-				d.endoff = d.getContentWindowLen() - 1
+				d.current.startoff = 0
+				d.current.endoff = d.getContentWindowLen() - 1
 			}
 		}
 	}

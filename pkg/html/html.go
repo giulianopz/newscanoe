@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/go-shiori/go-readability"
+	"github.com/giulianopz/go-readability"
 )
 
 func ExtractText(url string) (string, error) {
