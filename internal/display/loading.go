@@ -13,7 +13,7 @@ import (
 	"github.com/giulianopz/newscanoe/internal/util"
 )
 
-func (d *display) LoadURLs() error {
+func (d *display) LoadFeedList() error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -22,18 +22,18 @@ func (d *display) LoadURLs() error {
 
 	filePath, err := util.GetUrlsFilePath()
 	if err != nil {
-		log.Panicln(err)
+		return err
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Panicln(err)
+		return err
 	}
 	defer file.Close()
 
 	empty, err := util.IsEmpty(file)
 	if err != nil {
-		log.Panicln(err)
+		return err
 	}
 
 	if empty && len(d.cache.GetFeeds()) == 0 {
@@ -51,7 +51,7 @@ func (d *display) LoadURLs() error {
 		d.setBottomMessage(urlsListSectionMsg)
 	}
 
-	d.resetCoordinates()
+	//d.resetCurrentPos()
 
 	d.renderURLs()
 
@@ -130,7 +130,7 @@ func (d *display) loadAllFeeds() {
 
 }
 
-func (d *display) loadArticlesList(url string) {
+func (d *display) loadArticleList(url string) error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -140,7 +140,7 @@ func (d *display) loadArticlesList(url string) {
 
 			if len(cachedFeed.Items) == 0 {
 				d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
-				return
+				return fmt.Errorf("feed not loaded")
 			}
 
 			cachedFeed.New = false
@@ -151,7 +151,7 @@ func (d *display) loadArticlesList(url string) {
 				d.appendToRaw(item.Url)
 			}
 
-			d.resetCoordinates()
+			//d.resetCurrentPos()
 
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
@@ -178,9 +178,10 @@ func (d *display) loadArticlesList(url string) {
 			}()
 		}
 	}
+	return nil
 }
 
-func (d *display) loadArticleText(url string) {
+func (d *display) loadArticleText(url string) error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -196,7 +197,7 @@ func (d *display) loadArticleText(url string) {
 					if err != nil {
 						log.Default().Println(err)
 						d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
-						return
+						return fmt.Errorf("cannot load aricle")
 					}
 
 					i.New = false
@@ -211,7 +212,7 @@ func (d *display) loadArticleText(url string) {
 						}
 					}
 
-					d.resetCoordinates()
+					//d.resetCurrentPos()
 
 					d.renderArticleText()
 
@@ -232,6 +233,7 @@ func (d *display) loadArticleText(url string) {
 			}
 		}
 	}
+	return nil
 }
 
 func (d *display) addEnteredFeedUrl() {

@@ -57,7 +57,6 @@ func (d *display) renderArticlesList() {
 	} else {
 		d.setTmpBottomMessage(1*time.Second, "cannot load article list!")
 	}
-
 }
 
 func (d *display) renderArticleText() {

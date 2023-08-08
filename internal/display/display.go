@@ -275,7 +275,7 @@ func (d *display) currentUrl() string {
 	return string(d.raw[d.currentRow()])
 }
 
-func (d *display) resetCoordinates() {
+func (d *display) resetCurrentPos() {
 	d.current.cy = 1
 	d.current.cx = 1
 	d.current.startoff = 0

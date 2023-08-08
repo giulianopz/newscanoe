@@ -49,7 +49,7 @@ func Run() {
 		log.Panicln(err)
 	}
 
-	if err := d.LoadURLs(); err != nil {
+	if err := d.LoadFeedList(); err != nil {
 		log.Panicln(err)
 	}
 

@@ -188,12 +188,20 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			case URLS_LIST:
 				{
 					d.trackPos()
-					d.loadArticlesList(d.currentUrl())
+					if err := d.loadArticleList(d.currentUrl()); err != nil {
+						d.restorePos()
+					} else {
+						d.resetCurrentPos()
+					}
 				}
 			case ARTICLES_LIST:
 				{
 					d.trackPos()
-					d.loadArticleText(d.currentUrl())
+					if err := d.loadArticleText(d.currentUrl()); err != nil {
+						d.restorePos()
+					} else {
+						d.resetCurrentPos()
+					}
 				}
 			}
 		}
@@ -203,7 +211,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			switch d.currentSection {
 			case ARTICLES_LIST:
 				{
-					if err := d.LoadURLs(); err != nil {
+					if err := d.LoadFeedList(); err != nil {
 						log.Default().Printf("cannot load urls: %v", err)
 					}
 					d.currentFeedUrl = ""
@@ -211,7 +219,9 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 				}
 			case ARTICLE_TEXT:
 				{
-					d.loadArticlesList(d.currentFeedUrl)
+					if err := d.loadArticleList(d.currentFeedUrl); err != nil {
+						log.Default().Printf("cannot load article of feed with url %q: %v", d.currentFeedUrl, err)
+					}
 					d.currentArticleUrl = ""
 					d.restorePos()
 				}
@@ -276,7 +286,7 @@ func (d *display) whileEditing(input byte) {
 			d.setBottomMessage(urlsListSectionMsg)
 			d.setTmpBottomMessage(1*time.Second, "editing aborted!")
 			d.exitEditingMode()
-			d.resetCoordinates()
+			d.resetCurrentPos()
 		}
 	default:
 		{
