@@ -113,26 +113,16 @@ enclosed by two bars displaying some navigation context to the user
 ----------------
 */
 type display struct {
-	// current and previous cursor's position within visible content window
-	cx, prevcx int
-	cy, prevcy int
+	mu sync.Mutex
 
-	// current and previous offsets of rendered content window
-	startoff, prevso int
-	endoff, preveo   int
+	// current position of cursor
+	current *pos
+	// previous positions of cursor
+	previous []*pos
 
 	// size of terminal window
 	height int
 	width  int
-
-	// message displayed in the bottom bar
-	topBarMsg string
-	// message displayed in the bottom bar
-	bottomBarMsg string
-	// message displayed in the right corner of the bottom bar
-	bottomRightCorner string
-
-	mu sync.Mutex
 
 	// display raw text
 	raw [][]byte
@@ -141,27 +131,70 @@ type display struct {
 	// gob cache
 	cache *cache.Cache
 
-	editingMode bool
-	editingBuf  []string
-
-	currentSection    int
-	currentArticleUrl string
-	currentFeedUrl    string
+	// message displayed in the bottom bar
+	topBarMsg string
+	// message displayed in the bottom bar
+	bottomBarMsg string
+	// message displayed in the right corner of the bottom bar
+	bottomRightCorner string
 
 	ListenToKeyStrokes bool
 
 	client *http.Client
 
 	parser *gofeed.Parser
+
+	editingMode bool
+	editingBuf  []string
+
+	currentSection    int
+	currentArticleUrl string
+	currentFeedUrl    string
+}
+
+type pos struct {
+	// cursor's position within visible content window
+	cx int
+	cy int
+
+	// offsets of rendered content window
+	startoff int
+	endoff   int
+}
+
+func (d *display) trackPos() {
+	d.previous = append(d.previous, &pos{
+		cx:       d.current.cx,
+		cy:       d.current.cy,
+		startoff: d.current.startoff,
+		endoff:   d.current.endoff,
+	})
+}
+
+func (d *display) restorePos() {
+	if len(d.previous) != 0 {
+		last := d.previous[len(d.previous)-1]
+		d.current.cy, d.current.cx = last.cy, last.cx
+		d.current.startoff, d.current.endoff = last.startoff, last.endoff
+
+		d.previous[len(d.previous)-1] = nil
+		d.previous = d.previous[:len(d.previous)-1]
+	} else {
+		d.current.cy, d.current.cx = 1, 1
+		d.current.startoff, d.current.endoff = 0, 0
+	}
 }
 
 func New() *display {
 
 	d := &display{
-		cx:                 1,
-		cy:                 1,
-		startoff:           0,
-		endoff:             0,
+		current: &pos{
+			cx:       1,
+			cy:       1,
+			startoff: 0,
+			endoff:   0,
+		},
+		previous:           make([]*pos, 0),
 		cache:              cache.NewCache(),
 		ListenToKeyStrokes: true,
 		client: &http.Client{
@@ -173,15 +206,15 @@ func New() *display {
 }
 
 func (d *display) setMaxEndOff() {
-	d.endoff = d.startoff + d.getContentWindowLen() - 1
-	if d.endoff > (len(d.rendered) - 1) {
-		d.endoff = (len(d.rendered) - 1)
+	d.current.endoff = d.current.startoff + d.getContentWindowLen() - 1
+	if d.current.endoff > (len(d.rendered) - 1) {
+		d.current.endoff = (len(d.rendered) - 1)
 	}
 
 	if !d.editingMode {
-		max := d.endoff - d.startoff + 1
-		if d.cy > max {
-			d.cy = max
+		max := d.current.endoff - d.current.startoff + 1
+		if d.current.cy > max {
+			d.current.cy = max
 		}
 	}
 }
@@ -241,7 +274,7 @@ func (d *display) appendToRendered(cells []*cell) {
 }
 
 func (d *display) currentRow() int {
-	return d.cy - 1 + d.startoff
+	return d.current.cy - 1 + d.current.startoff
 }
 
 func (d *display) currentUrl() string {
@@ -249,9 +282,9 @@ func (d *display) currentUrl() string {
 }
 
 func (d *display) resetCoordinates() {
-	d.cy = 1
-	d.cx = 1
-	d.startoff = 0
+	d.current.cy = 1
+	d.current.cx = 1
+	d.current.startoff = 0
 }
 
 func (d *display) resetRows() {
@@ -304,8 +337,8 @@ func (d *display) enterEditingMode() {
 	d.editingMode = true
 	d.editingBuf = []string{}
 
-	d.cy = d.height - 1
-	d.cx = 1
+	d.current.cy = d.height - 1
+	d.current.cx = 1
 
 	d.setBottomMessage("")
 }
@@ -348,9 +381,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	d.setMaxEndOff()
 
-	log.Default().Printf("looping from %d to %d: %d\n", d.startoff, d.endoff, d.endoff-d.startoff)
+	log.Default().Printf("looping from %d to %d: %d\n", d.current.startoff, d.current.endoff, d.current.endoff-d.current.startoff)
 	var printed int
-	for i := d.startoff; i <= d.endoff; i++ {
+	for i := d.current.startoff; i <= d.current.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
 			write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
@@ -402,9 +435,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
-	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.cy+d.startoff, len(d.rendered))
+	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
 	if DebugMode {
-		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.cy, d.cx, d.startoff, d.endoff, d.height, d.width)
+		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width)
 	}
 
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
@@ -453,7 +486,7 @@ func (d *display) RefreshScreen() {
 
 	d.draw(buf)
 
-	buf.WriteString(ansi.MoveCursor(d.cy, d.cx))
+	buf.WriteString(ansi.MoveCursor(d.current.cy, d.current.cx))
 	if d.editingMode {
 		buf.WriteString(ansi.ShowCursor())
 	}
