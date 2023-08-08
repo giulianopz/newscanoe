@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
-	"github.com/giulianopz/newscanoe/pkg/cache"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/ansi"
+	"github.com/giulianopz/newscanoe/internal/cache"
+	"github.com/giulianopz/newscanoe/internal/util"
 )
 
 func (d *display) renderURLs() {

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/giulianopz/newscanoe/pkg/app"
+	"github.com/giulianopz/newscanoe/internal/app"
 )
 
 const (

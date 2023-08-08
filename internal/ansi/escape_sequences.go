@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/giulianopz/newscanoe/pkg/ascii"
+	"github.com/giulianopz/newscanoe/internal/ascii"
 )
 
 /*

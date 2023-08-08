@@ -6,8 +6,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/giulianopz/newscanoe/pkg/ascii"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/ascii"
+	"github.com/giulianopz/newscanoe/internal/util"
 	"golang.org/x/sys/unix"
 )
 

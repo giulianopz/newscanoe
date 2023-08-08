@@ -10,12 +10,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
-	"github.com/giulianopz/newscanoe/pkg/app"
-	"github.com/giulianopz/newscanoe/pkg/ascii"
-	"github.com/giulianopz/newscanoe/pkg/cache"
-	"github.com/giulianopz/newscanoe/pkg/util"
-	"github.com/giulianopz/newscanoe/pkg/xterm"
+	"github.com/giulianopz/newscanoe/internal/ansi"
+	"github.com/giulianopz/newscanoe/internal/app"
+	"github.com/giulianopz/newscanoe/internal/ascii"
+	"github.com/giulianopz/newscanoe/internal/cache"
+	"github.com/giulianopz/newscanoe/internal/util"
+	"github.com/giulianopz/newscanoe/internal/xterm"
 	"github.com/mmcdole/gofeed"
 )
 

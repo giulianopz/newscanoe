@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/util"
 	"github.com/mmcdole/gofeed"
 	"golang.org/x/exp/slices"
 )

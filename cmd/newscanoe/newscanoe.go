@@ -10,9 +10,9 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/giulianopz/newscanoe/pkg/display"
-	"github.com/giulianopz/newscanoe/pkg/termios"
-	"github.com/giulianopz/newscanoe/pkg/xterm"
+	"github.com/giulianopz/newscanoe/internal/display"
+	"github.com/giulianopz/newscanoe/internal/termios"
+	"github.com/giulianopz/newscanoe/internal/xterm"
 )
 
 var (

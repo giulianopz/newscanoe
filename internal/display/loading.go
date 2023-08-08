@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/html"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/html"
+	"github.com/giulianopz/newscanoe/internal/util"
 )
 
 func (d *display) LoadURLs() error {
