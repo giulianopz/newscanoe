@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -140,8 +139,6 @@ type display struct {
 
 	ListenToKeyStrokes bool
 
-	client *http.Client
-
 	parser *gofeed.Parser
 
 	editingMode bool
@@ -197,10 +194,7 @@ func New() *display {
 		previous:           make([]*pos, 0),
 		cache:              cache.NewCache(),
 		ListenToKeyStrokes: true,
-		client: &http.Client{
-			Timeout: 3 * time.Second,
-		},
-		parser: gofeed.NewParser(),
+		parser:             gofeed.NewParser(),
 	}
 	return d
 }
