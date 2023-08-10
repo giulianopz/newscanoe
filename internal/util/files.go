@@ -1,24 +1,21 @@
 package util
 
 import (
-	"bufio"
 	"errors"
-	"fmt"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/giulianopz/newscanoe/internal/app"
 )
 
 const (
-	urlsFileName  = "urls"
-	cacheFileName = "feeds.gob"
+	configFileName = "config.yaml"
+	cacheFileName  = "feeds.gob"
 )
 
-func GetUrlsFilePath() (string, error) {
+func GetConfigFilePath() (string, error) {
 	configDirName, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -32,7 +29,7 @@ func GetUrlsFilePath() (string, error) {
 		}
 	}
 
-	urlsFilePath := filepath.Join(appConfigDirName, urlsFileName)
+	urlsFilePath := filepath.Join(appConfigDirName, configFileName)
 
 	if !Exists(urlsFilePath) {
 		if _, err := os.Create(urlsFilePath); err != nil {
@@ -69,14 +66,15 @@ func Exists(path string) bool {
 	}
 }
 
-func IsEmpty(f *os.File) (bool, error) {
+/* func IsEmpty(f *os.File) (bool, error) {
 	info, err := f.Stat()
 	if err != nil {
 		return false, err
 	}
 	return info.Size() == 0, nil
-}
+} */
 
+/*
 func isAlreadyPresent(url string, f *os.File) (bool, error) {
 	stat, err := f.Stat()
 	if err != nil {
@@ -102,7 +100,7 @@ func isAlreadyPresent(url string, f *os.File) (bool, error) {
 
 func AppendUrl(url string) error {
 
-	path, err := GetUrlsFilePath()
+	path, err := GetConfigFilePath()
 	if err != nil {
 		return err
 	}
@@ -139,3 +137,4 @@ func (e *UrlAlreadyPresentErr) Error() string {
 func newUrlAlreadyPresentErr(url string) *UrlAlreadyPresentErr {
 	return &UrlAlreadyPresentErr{url: url}
 }
+*/

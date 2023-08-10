@@ -2,53 +2,39 @@ package display
 
 import (
 	"log"
-	"strings"
 	"time"
 
 	"github.com/giulianopz/newscanoe/internal/ansi"
-	"github.com/giulianopz/newscanoe/internal/cache"
+	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/util"
 )
 
-func (d *display) renderURLs() {
+func (d *display) renderFeedList() {
+	d.rendered = make([][]*cell, 0)
 
-	cached := make(map[string]*cache.Feed, 0)
-
-	for _, cachedFeed := range d.cache.GetFeeds() {
-		cached[cachedFeed.Url] = cachedFeed
+	m := make(map[string]string)
+	for _, f := range d.config.Feeds {
+		m[f.Url] = f.Alias
 	}
 
-	d.rendered = make([][]*cell, 0)
-	for row := range d.raw {
-		url := d.raw[row]
-		if !strings.Contains(string(url), "#") {
-			cachedFeed, present := cached[string(url)]
-			if !present {
-				d.appendToRendered(fromString(string(url)))
-			} else {
-				if cachedFeed.New {
-					d.appendToRendered(fromStringWithStyle(cachedFeed.Title, ansi.BOLD))
-				} else {
-					d.appendToRendered(fromString(cachedFeed.Title))
-				}
-			}
-		}
+	for _, url := range d.raw {
+		d.appendToRendered(fromString(m[string(url)]))
 	}
 }
 
-func (d *display) renderArticlesList() {
+func (d *display) renderArticleList() {
 
-	var currentFeed *cache.Feed
+	var f *feed.Feed
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
-			currentFeed = cachedFeed
+			f = cachedFeed
 		}
 	}
 
 	d.rendered = make([][]*cell, 0)
-	if currentFeed != nil {
-		for _, item := range currentFeed.GetItemsOrderedByDate() {
-			if item.New {
+	if f != nil {
+		for _, item := range f.GetItemsOrderedByDate() {
+			if item.Unread {
 				d.appendToRendered(fromStringWithStyle(util.RenderArticleRow(item.PubDate, item.Title), ansi.BOLD))
 			} else {
 				d.appendToRendered(fromString(util.RenderArticleRow(item.PubDate, item.Title)))

@@ -144,7 +144,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'r':
 		if d.currentSection == URLS_LIST {
-			d.loadFeed(string(d.raw[d.currentRow()]))
+			d.fetchFeed(string(d.raw[d.currentRow()]))
 		}
 
 	case 'a':
@@ -154,7 +154,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'R':
 		if d.currentSection == URLS_LIST {
-			d.loadAllFeeds()
+			d.fetchAllFeeds()
 		}
 
 	case 'o':

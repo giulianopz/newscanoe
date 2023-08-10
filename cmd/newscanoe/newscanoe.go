@@ -45,6 +45,10 @@ func Run() {
 	}
 	d.SetWindowSize(w, h)
 
+	if err := d.LoadConfig(); err != nil {
+		log.Panicln(err)
+	}
+
 	if err := d.LoadCache(); err != nil {
 		log.Panicln(err)
 	}

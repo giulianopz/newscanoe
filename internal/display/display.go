@@ -13,6 +13,7 @@ import (
 	"github.com/giulianopz/newscanoe/internal/app"
 	"github.com/giulianopz/newscanoe/internal/ascii"
 	"github.com/giulianopz/newscanoe/internal/cache"
+	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/util"
 	"github.com/giulianopz/newscanoe/internal/xterm"
 	"github.com/mmcdole/gofeed"
@@ -127,6 +128,9 @@ type display struct {
 	raw [][]byte
 	// display rendered text
 	rendered [][]*cell
+
+	// YAML config
+	config *config.Config
 	// gob cache
 	cache *cache.Cache
 
@@ -145,8 +149,8 @@ type display struct {
 	editingBuf  []string
 
 	currentSection    int
-	currentArticleUrl string
 	currentFeedUrl    string
+	currentArticleUrl string
 }
 
 type pos struct {
@@ -192,8 +196,9 @@ func New() *display {
 			endoff:   0,
 		},
 		previous:           make([]*pos, 0),
-		cache:              cache.NewCache(),
 		ListenToKeyStrokes: true,
+		config:             &config.Config{},
+		cache:              cache.NewCache(),
 		parser:             gofeed.NewParser(),
 	}
 	return d
@@ -306,6 +311,20 @@ func (d *display) deleteCharAt(i int) {
 	}
 }
 
+func (d *display) LoadConfig() error {
+	configFile, err := util.GetConfigFilePath()
+	if err != nil {
+		return err
+	}
+
+	if util.Exists(configFile) {
+		if err := d.config.Decode(configFile); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *display) LoadCache() error {
 	cachePath, err := util.GetCacheFilePath()
 	if err != nil {
@@ -313,10 +332,12 @@ func (d *display) LoadCache() error {
 	}
 
 	if util.Exists(cachePath) {
-		if err := d.cache.Decode(); err != nil {
+		if err := d.cache.Decode(cachePath); err != nil {
 			return err
 		}
 	}
+
+	d.cache.Merge(d.config)
 	return nil
 }
 
@@ -335,14 +356,6 @@ func (d *display) enterEditingMode() {
 	d.current.cx = 1
 
 	d.setBottomMessage("")
-}
-
-func (d *display) canBeParsed(url string) bool {
-	if _, err := d.parser.ParseURL(url); err != nil {
-		log.Default().Printf("cannot parse feed url: %v\n", err)
-		return false
-	}
-	return true
 }
 
 func (d *display) draw(buf *bytes.Buffer) {
@@ -372,6 +385,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for k := 0; k < d.width; k++ {
 		write(buf, "-", "cannot write hyphen")
 	}
+	write(buf, "\r\n", "cannot write carriage return")
 
 	d.setMaxEndOff()
 
@@ -469,10 +483,10 @@ func (d *display) RefreshScreen() {
 	switch d.currentSection {
 
 	case URLS_LIST:
-		d.renderURLs()
+		d.renderFeedList()
 
 	case ARTICLES_LIST:
-		d.renderArticlesList()
+		d.renderArticleList()
 
 	case ARTICLE_TEXT:
 		d.renderArticleText()
