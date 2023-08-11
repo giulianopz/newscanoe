@@ -254,11 +254,17 @@ func (d *display) Quit(quitC chan bool) {
 
 	d.ListenToKeyStrokes = false
 
-	fmt.Fprint(os.Stdout, ansi.ShowCursor())
-	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
-	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
+	// this is just what 'clear' does:
+	// $ clear  | od -c
+	// 0000000 033   [   H 033   [   2   J 033   [   3   J
+	// 0000013
+	// please, read here: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
 
-	fmt.Fprint(os.Stdout, xterm.CLEAR_SCROLLBACK_BUFFER)
+	fmt.Fprint(os.Stdout, ansi.ShowCursor())
+	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
+	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	fmt.Fprint(os.Stdout, ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
+
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 
 	quitC <- true
@@ -458,9 +464,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 		for i := padding; i > 0; i-- {
 			write(buf, " ", "cannot write empty string")
 		}
+		write(buf, "\r\n", "cannot write carriage return")
 		write(buf, d.bottomRightCorner, "cannot write bottom right corner text")
 	}
-
 	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
 }
 
@@ -476,9 +482,11 @@ func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
-	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
 	buf.WriteString(ansi.HideCursor())
 	buf.WriteString(ansi.MoveCursor(1, 1))
+
+	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	buf.WriteString(ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
 
 	switch d.currentSection {
 

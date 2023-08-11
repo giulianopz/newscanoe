@@ -28,3 +28,4 @@ Colors:
 Misc:
 - [Text Editor Data Structures](https://cdacamar.github.io/data%20structures/algorithms/benchmarking/text%20editors/c++/editor-data-structures/?utm_source=programmingdigest&utm_medium&utm_campaign=1663)
 - [Text Rendering Hates You](https://faultlore.com/blah/text-hates-you/)
+- [Terminal Guide](https://terminalguide.namepad.de/)
