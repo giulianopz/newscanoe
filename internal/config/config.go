@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/giulianopz/newscanoe/internal/feed"
@@ -61,19 +60,11 @@ func (c *Config) Decode(filePath string) error {
 }
 
 func (c *Config) AddFeed(parsedFeed *gofeed.Feed, url string) error {
-
 	for _, f := range c.Feeds {
 		if f.Url == url {
 			return fmt.Errorf("already present in config: %q", url)
 		}
 	}
-
-	newFeed := feed.NewFeed(parsedFeed.Title).WithUrl(url)
-	newFeed.Alias = parsedFeed.Title
-	newFeed.Format = feed.FeedFormat(strings.ToLower(parsedFeed.FeedType))
-	newFeed.CountUnread()
-
-	c.Feeds = append(c.Feeds, newFeed)
-
+	c.Feeds = append(c.Feeds, feed.NewFeedFrom(parsedFeed, url))
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/giulianopz/newscanoe/internal/util"
+	"github.com/mmcdole/gofeed"
 	"golang.org/x/exp/slices"
 )
 
@@ -32,6 +33,11 @@ func NewFeed(name string) *Feed {
 	}
 }
 
+func NewFeedFrom(parsedFeed *gofeed.Feed, url string) *Feed {
+	title := strings.TrimSpace(parsedFeed.Title)
+	return NewFeed(title).WithUrl(url).WithAlias(title).WithFormat(parsedFeed.FeedType)
+}
+
 func (f *Feed) HasItem(title string) bool {
 	return slices.ContainsFunc(f.Items, func(i *Item) bool {
 		return i.Title == title
@@ -40,6 +46,16 @@ func (f *Feed) HasItem(title string) bool {
 
 func (f *Feed) WithUrl(url string) *Feed {
 	f.Url = url
+	return f
+}
+
+func (f *Feed) WithFormat(format string) *Feed {
+	f.Format = FeedFormat(strings.ToLower(format))
+	return f
+}
+
+func (f *Feed) WithAlias(alias string) *Feed {
+	f.Alias = alias
 	return f
 }
 

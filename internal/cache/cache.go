@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"log"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/giulianopz/newscanoe/internal/config"
@@ -82,8 +81,6 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	title := strings.TrimSpace(parsedFeed.Title)
-
 	for _, cachedFeed := range c.feeds {
 
 		if cachedFeed.Url == url {
@@ -100,7 +97,7 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		}
 	}
 
-	newFeed := feed.NewFeed(title).WithUrl(url)
+	newFeed := feed.NewFeedFrom(parsedFeed, url)
 	for _, parsedItem := range parsedFeed.Items {
 
 		pubDate := util.NoPubDate
