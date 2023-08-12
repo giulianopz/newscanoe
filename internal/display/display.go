@@ -31,7 +31,7 @@ const (
 // num of lines reserved to top and bottom bars plus a final empty row
 const (
 	TOP_PADDING    = 2
-	BOTTOM_PADDING = 3
+	BOTTOM_PADDING = 2
 )
 
 // bottom bar messages
@@ -358,7 +358,7 @@ func (d *display) enterEditingMode() {
 	d.editingMode = true
 	d.editingBuf = []string{}
 
-	d.current.cy = d.height - 1
+	d.current.cy = d.height
 	d.current.cx = 1
 
 	d.setBottomMessage("")
@@ -464,7 +464,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 		for i := padding; i > 0; i-- {
 			write(buf, " ", "cannot write empty string")
 		}
-		write(buf, "\r\n", "cannot write carriage return")
 		write(buf, d.bottomRightCorner, "cannot write bottom right corner text")
 	}
 	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
