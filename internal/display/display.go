@@ -14,9 +14,9 @@ import (
 	"github.com/giulianopz/newscanoe/internal/ascii"
 	"github.com/giulianopz/newscanoe/internal/cache"
 	"github.com/giulianopz/newscanoe/internal/config"
+	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/util"
 	"github.com/giulianopz/newscanoe/internal/xterm"
-	"github.com/mmcdole/gofeed"
 )
 
 var DebugMode bool
@@ -143,7 +143,7 @@ type display struct {
 
 	ListenToKeyStrokes bool
 
-	parser *gofeed.Parser
+	parser *feed.Parser
 
 	editingMode bool
 	editingBuf  []string
@@ -199,7 +199,7 @@ func New() *display {
 		ListenToKeyStrokes: true,
 		config:             &config.Config{},
 		cache:              cache.NewCache(),
-		parser:             gofeed.NewParser(),
+		parser:             feed.NewParser(),
 	}
 	return d
 }

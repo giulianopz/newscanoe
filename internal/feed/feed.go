@@ -35,7 +35,13 @@ func NewFeed(name string) *Feed {
 
 func NewFeedFrom(parsedFeed *gofeed.Feed, url string) *Feed {
 	title := strings.TrimSpace(parsedFeed.Title)
-	return NewFeed(title).WithUrl(url).WithAlias(title).WithFormat(parsedFeed.FeedType)
+	f := NewFeed(title).WithUrl(url).WithAlias(title).WithFormat(parsedFeed.FeedType)
+
+	for _, parsedItem := range parsedFeed.Items {
+		f.Items = append(f.Items, NewItemFrom(parsedItem))
+	}
+
+	return f
 }
 
 func (f *Feed) HasItem(title string) bool {
@@ -83,8 +89,8 @@ func (f *Feed) GetItemsOrderedByDate() []*Item {
 type Item struct {
 	Title   string
 	Url     string
-	Unread  bool
 	PubDate time.Time
+	Unread  bool
 }
 
 func NewItem(title, url string, pubDate time.Time) *Item {
@@ -94,4 +100,12 @@ func NewItem(title, url string, pubDate time.Time) *Item {
 		PubDate: pubDate,
 		Unread:  true,
 	}
+}
+
+func NewItemFrom(parsedItem *gofeed.Item) *Item {
+	pubDate := util.NoPubDate
+	if parsedItem.PublishedParsed != nil {
+		pubDate = *parsedItem.PublishedParsed
+	}
+	return NewItem(parsedItem.Title, parsedItem.Link, pubDate)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/util"
-	"github.com/mmcdole/gofeed"
 )
 
 type Cache struct {
@@ -76,7 +75,7 @@ func (c *Cache) Decode(filePath string) error {
 	return nil
 }
 
-func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
+func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -88,8 +87,7 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 			for _, parsedItem := range parsedFeed.Items {
 
 				if !cachedFeed.HasItem(parsedItem.Title) {
-					cachedItem := feed.NewItem(parsedItem.Title, parsedItem.Link, *parsedItem.PublishedParsed)
-					cachedFeed.Items = append(cachedFeed.Items, cachedItem)
+					cachedFeed.Items = append(cachedFeed.Items, parsedItem)
 				}
 			}
 			log.Default().Printf("refreshed cached feed with url: %s\n", url)
@@ -97,18 +95,7 @@ func (c *Cache) AddFeed(parsedFeed *gofeed.Feed, url string) error {
 		}
 	}
 
-	newFeed := feed.NewFeedFrom(parsedFeed, url)
-	for _, parsedItem := range parsedFeed.Items {
-
-		pubDate := util.NoPubDate
-		if parsedItem.PublishedParsed != nil {
-			pubDate = *parsedItem.PublishedParsed
-		}
-
-		newItem := feed.NewItem(parsedItem.Title, parsedItem.Link, pubDate)
-		newFeed.Items = append(newFeed.Items, newItem)
-	}
-	c.feeds = append(c.feeds, newFeed)
+	c.feeds = append(c.feeds, parsedFeed)
 	log.Default().Printf("cached a new feed with url: %s\n", url)
 
 	return nil

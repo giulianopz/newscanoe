@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/html"
 	"github.com/giulianopz/newscanoe/internal/util"
-	"github.com/mmcdole/gofeed"
 )
 
 func (d *display) LoadFeedList() error {
@@ -22,6 +23,10 @@ func (d *display) LoadFeedList() error {
 	if len(d.config.Feeds) == 0 {
 		d.setBottomMessage("no feed url: type 'a' to add one now")
 	} else {
+
+		sort.SliceStable(d.config.Feeds, func(i, j int) bool {
+			return strings.ToLower(d.config.Feeds[i].Alias) < strings.ToLower(d.config.Feeds[j].Alias)
+		})
 		for _, f := range d.config.Feeds {
 			d.appendToRaw(f.Url)
 		}
@@ -38,12 +43,12 @@ func (d *display) LoadFeedList() error {
 	return nil
 }
 
-func (d *display) fetchFeed(url string) (*gofeed.Feed, error) {
+func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	parsedFeed, err := d.parser.ParseURL(url)
+	parsedFeed, err := d.parser.Parse(url)
 	if err != nil {
 		log.Default().Println(err)
 		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
@@ -77,7 +82,7 @@ func (d *display) fetchAllFeeds() {
 
 		log.Default().Printf("loading feed #%d from url %s\n", id, url)
 
-		parsedFeed, err := d.parser.ParseURL(url)
+		parsedFeed, err := d.parser.Parse(url)
 		if err != nil {
 			log.Default().Println(err)
 			d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
@@ -109,9 +114,12 @@ func (d *display) loadArticleList(url string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	var found bool
 	for _, cachedFeed := range d.cache.GetFeeds() {
 
 		if cachedFeed.Url == url {
+
+			found = true
 
 			if len(cachedFeed.Items) == 0 {
 				d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
@@ -148,6 +156,9 @@ func (d *display) loadArticleList(url string) error {
 				}
 			}()
 		}
+	}
+	if !found {
+		return fmt.Errorf("cannot find articles of feed with url: %s", url)
 	}
 	return nil
 }

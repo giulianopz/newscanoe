@@ -7,7 +7,6 @@ import (
 
 	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/util"
-	"github.com/mmcdole/gofeed"
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,12 +58,12 @@ func (c *Config) Decode(filePath string) error {
 	return nil
 }
 
-func (c *Config) AddFeed(parsedFeed *gofeed.Feed, url string) error {
+func (c *Config) AddFeed(parsedFeed *feed.Feed, url string) error {
 	for _, f := range c.Feeds {
 		if f.Url == url {
 			return fmt.Errorf("already present in config: %q", url)
 		}
 	}
-	c.Feeds = append(c.Feeds, feed.NewFeedFrom(parsedFeed, url))
+	c.Feeds = append(c.Feeds, parsedFeed)
 	return nil
 }
