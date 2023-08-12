@@ -327,6 +327,8 @@ func (d *display) moveCursor(direction byte) {
 		if d.currentSection == ARTICLE_TEXT {
 			if d.current.startoff > 0 {
 				d.current.startoff--
+			} else {
+				d.current.cy = 1
 			}
 			return
 		}
