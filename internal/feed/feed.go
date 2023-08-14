@@ -9,21 +9,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type FeedFormat string
-
-const (
-	RSS  FeedFormat = "rss"
-	Atom FeedFormat = "atom"
-	JSON FeedFormat = "json"
-)
-
 type Feed struct {
-	Name        string     `yaml:"name"`
-	Url         string     `yaml:"url"`
-	Format      FeedFormat `yaml:"format"`
-	Alias       string     `yaml:"alias"`
-	Items       []*Item    `yaml:"-"`
-	UnreadCount int        `yaml:"-"`
+	Name        string  `yaml:"name"`
+	Url         string  `yaml:"url"`
+	Items       []*Item `yaml:"-"`
+	UnreadCount int     `yaml:"-"`
 }
 
 func NewFeed(name string) *Feed {
@@ -35,7 +25,7 @@ func NewFeed(name string) *Feed {
 
 func NewFeedFrom(parsedFeed *gofeed.Feed, url string) *Feed {
 	title := strings.TrimSpace(parsedFeed.Title)
-	f := NewFeed(title).WithUrl(url).WithAlias(title).WithFormat(parsedFeed.FeedType)
+	f := NewFeed(title).WithUrl(url)
 
 	for _, parsedItem := range parsedFeed.Items {
 		f.Items = append(f.Items, NewItemFrom(parsedItem))
@@ -52,16 +42,6 @@ func (f *Feed) HasItem(title string) bool {
 
 func (f *Feed) WithUrl(url string) *Feed {
 	f.Url = url
-	return f
-}
-
-func (f *Feed) WithFormat(format string) *Feed {
-	f.Format = FeedFormat(strings.ToLower(format))
-	return f
-}
-
-func (f *Feed) WithAlias(alias string) *Feed {
-	f.Alias = alias
 	return f
 }
 
@@ -98,7 +78,6 @@ func NewItem(title, url string, pubDate time.Time) *Item {
 		Title:   title,
 		Url:     url,
 		PubDate: pubDate,
-		Unread:  true,
 	}
 }
 

@@ -10,15 +10,23 @@ import (
 )
 
 func (d *display) renderFeedList() {
+
 	d.rendered = make([][]*cell, 0)
 
-	m := make(map[string]string)
-	for _, f := range d.config.Feeds {
-		m[f.Url] = f.Alias
+	m := make(map[string]*feed.Feed)
+
+	for _, f := range d.cache.GetFeeds() {
+		f.CountUnread()
+		m[f.Url] = f
 	}
 
 	for _, url := range d.raw {
-		d.appendToRendered(fromString(m[string(url)]))
+		f, found := m[string(url)]
+		if !found {
+			log.Default().Printf("feed url not found: %s\n", url)
+		} else {
+			d.appendToRendered(fromString(util.RenderFeedRow(f.UnreadCount, len(f.Items), f.Name)))
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/util"
+	"golang.org/x/exp/slices"
 )
 
 type Cache struct {
@@ -87,6 +88,7 @@ func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) error {
 			for _, parsedItem := range parsedFeed.Items {
 
 				if !cachedFeed.HasItem(parsedItem.Title) {
+					parsedItem.Unread = true
 					cachedFeed.Items = append(cachedFeed.Items, parsedItem)
 				}
 			}
@@ -101,13 +103,26 @@ func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) error {
 	return nil
 }
 
-func (c *Cache) Merge(conf *config.Config) {
-	m := make(map[string]string)
-	for _, f := range conf.Feeds {
-		m[f.Url] = f.Alias
-	}
+func (cache *Cache) Merge(conf *config.Config) {
 
-	for _, f := range c.feeds {
-		f.Alias = m[f.Url]
+	for _, configuredFeed := range conf.Feeds {
+
+		var cachedFeed *feed.Feed
+
+		found := slices.ContainsFunc[*feed.Feed](cache.feeds, func(f *feed.Feed) bool {
+			for _, cached := range cache.feeds {
+				if cached.Url == configuredFeed.Url {
+					cachedFeed = cached
+					return true
+				}
+			}
+			return false
+		})
+
+		if !found {
+			cache.feeds = append(cache.feeds, feed.NewFeed(configuredFeed.Name).WithUrl(configuredFeed.Url))
+		} else {
+			cachedFeed.Name = configuredFeed.Name
+		}
 	}
 }

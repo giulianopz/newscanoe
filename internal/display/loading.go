@@ -25,7 +25,7 @@ func (d *display) LoadFeedList() error {
 	} else {
 
 		sort.SliceStable(d.config.Feeds, func(i, j int) bool {
-			return strings.ToLower(d.config.Feeds[i].Alias) < strings.ToLower(d.config.Feeds[j].Alias)
+			return strings.ToLower(d.config.Feeds[i].Name) < strings.ToLower(d.config.Feeds[j].Name)
 		})
 		for _, f := range d.config.Feeds {
 			d.appendToRaw(f.Url)
@@ -147,7 +147,7 @@ func (d *display) loadArticleList(url string) error {
 				lynxHelp = " | l = open with lynx"
 			}
 
-			d.setTopMessage(fmt.Sprintf("> %s", cachedFeed.Alias))
+			d.setTopMessage(fmt.Sprintf("> %s", cachedFeed.Name))
 			d.setBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
 
 			go func() {
@@ -158,6 +158,7 @@ func (d *display) loadArticleList(url string) error {
 		}
 	}
 	if !found {
+		d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
 		return fmt.Errorf("cannot find articles of feed with url: %s", url)
 	}
 	return nil
@@ -200,7 +201,7 @@ func (d *display) loadArticleText(url string) error {
 					d.currentArticleUrl = url
 					d.currentSection = ARTICLE_TEXT
 
-					d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Alias, i.Title))
+					d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Name, i.Title))
 					d.setBottomMessage(articleTextSectionMsg)
 
 					go func() {
