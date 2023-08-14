@@ -16,7 +16,7 @@ var (
 
 func main() {
 	flag.BoolVar(&debugFlag, "d", false, "enable debug mode")
-	flag.BoolVar(&editFlag, "e", false, "edit config file with default text editor")
+	flag.BoolVar(&editFlag, "e", false, "edit config file with default text editor (according to $EDITOR)")
 	flag.Parse()
 
 	if !debugFlag {
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	if editFlag {
-		if err := edit.ConfigFile(); err != nil {
+		if err := edit.EditConfigFile(); err != nil {
 			log.Default().Println(err)
 		}
 		return
