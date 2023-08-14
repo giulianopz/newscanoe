@@ -19,8 +19,6 @@ import (
 	"github.com/giulianopz/newscanoe/internal/xterm"
 )
 
-var DebugMode bool
-
 // display sections
 const (
 	URLS_LIST = iota
@@ -113,6 +111,8 @@ enclosed by two bars displaying some navigation context to the user
 ----------------
 */
 type display struct {
+	debugMode bool
+
 	mu sync.Mutex
 
 	// current position of cursor
@@ -186,9 +186,10 @@ func (d *display) restorePos() {
 	}
 }
 
-func New() *display {
+func New(debugMode bool) *display {
 
 	d := &display{
+		debugMode: debugMode,
 		current: &pos{
 			cx:       1,
 			cy:       1,
@@ -450,7 +451,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
-	if DebugMode {
+	if d.debugMode {
 		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width)
 	}
 

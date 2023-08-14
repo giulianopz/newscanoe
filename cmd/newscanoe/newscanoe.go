@@ -1,9 +1,7 @@
 package newscanoe
 
 import (
-	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -24,21 +22,14 @@ var (
 	}
 )
 
-func Run() {
-
-	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
-	flag.Parse()
-
-	if !display.DebugMode {
-		log.SetOutput(io.Discard)
-	}
+func Run(debugMode bool) {
 
 	signal.Notify(sigC, signals...)
 
 	origTermios := termios.EnableRawMode(os.Stdin.Fd())
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
-	d := display.New()
+	d := display.New(debugMode)
 	w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
 	if err != nil {
 		log.Panicln(err)

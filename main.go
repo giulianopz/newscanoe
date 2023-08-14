@@ -1,7 +1,34 @@
 package main
 
-import "github.com/giulianopz/newscanoe/cmd/newscanoe"
+import (
+	"flag"
+	"io"
+	"log"
+
+	"github.com/giulianopz/newscanoe/cmd/edit"
+	"github.com/giulianopz/newscanoe/cmd/newscanoe"
+)
+
+var (
+	debugFlag bool
+	editFlag  bool
+)
 
 func main() {
-	newscanoe.Run()
+	flag.BoolVar(&debugFlag, "d", false, "enable debug mode")
+	flag.BoolVar(&editFlag, "e", false, "edit config file with default text editor")
+	flag.Parse()
+
+	if !debugFlag {
+		log.SetOutput(io.Discard)
+	}
+
+	if editFlag {
+		if err := edit.ConfigFile(); err != nil {
+			log.Default().Println(err)
+		}
+		return
+	}
+
+	newscanoe.Run(debugFlag)
 }
