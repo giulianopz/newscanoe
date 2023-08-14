@@ -231,6 +231,7 @@ func (d *display) addEnteredFeedUrl() {
 
 	parsedFeed, err := d.fetchFeed(url)
 	if err != nil {
+		log.Default().Println(err)
 		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
 		return
 	}
