@@ -14,7 +14,7 @@ A single YAML file (`config.yaml`) is used to configure the app: it consists of 
 If such file does not already exist, it will be created at the first execution of the app and you will be prompted to manually insert a url by typing `a`. 
 You can then edit such file with any text editor (`vi` is the default, unless `EDITOR` environment variable is set) by running: `newscanoe -e`. 
 
-Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` (or `$HOME/.cache/newscanoe`).
+Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` (or `$HOME/.cache/newscanoe`). The cache can be cleaned up by running `newscanoe -c`
 
 ### Keybindings
 
