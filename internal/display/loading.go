@@ -218,7 +218,7 @@ func (d *display) loadArticleText(url string) error {
 	return nil
 }
 
-func (d *display) addEnteredFeedUrl() {
+func (d *display) addNewFeed() {
 
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 

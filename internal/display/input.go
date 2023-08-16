@@ -274,7 +274,7 @@ func (d *display) whileEditing(input byte) {
 		}
 	case input == ascii.ENTER:
 		{
-			d.addEnteredFeedUrl()
+			d.addNewFeed()
 		}
 	case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 		{
