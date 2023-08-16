@@ -2,53 +2,47 @@ package display
 
 import (
 	"log"
-	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
-	"github.com/giulianopz/newscanoe/pkg/cache"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/ansi"
+	"github.com/giulianopz/newscanoe/internal/feed"
+	"github.com/giulianopz/newscanoe/internal/util"
 )
 
-func (d *display) renderURLs() {
-
-	cached := make(map[string]*cache.Feed, 0)
-
-	for _, cachedFeed := range d.cache.GetFeeds() {
-		cached[cachedFeed.Url] = cachedFeed
-	}
+func (d *display) renderFeedList() {
 
 	d.rendered = make([][]*cell, 0)
-	for row := range d.raw {
-		url := d.raw[row]
-		if !strings.Contains(string(url), "#") {
-			cachedFeed, present := cached[string(url)]
-			if !present {
-				d.appendToRendered(fromString(string(url)))
-			} else {
-				if cachedFeed.New {
-					d.appendToRendered(fromStringWithStyle(cachedFeed.Title, ansi.BOLD))
-				} else {
-					d.appendToRendered(fromString(cachedFeed.Title))
-				}
-			}
+
+	m := make(map[string]*feed.Feed)
+
+	for _, f := range d.cache.GetFeeds() {
+		f.CountUnread()
+		m[f.Url] = f
+	}
+
+	for _, url := range d.raw {
+		f, found := m[string(url)]
+		if !found {
+			log.Default().Printf("feed url not found: %s\n", url)
+		} else {
+			d.appendToRendered(fromString(util.RenderFeedRow(f.UnreadCount, len(f.Items), f.Name)))
 		}
 	}
 }
 
-func (d *display) renderArticlesList() {
+func (d *display) renderArticleList() {
 
-	var currentFeed *cache.Feed
+	var f *feed.Feed
 	for _, cachedFeed := range d.cache.GetFeeds() {
 		if cachedFeed.Url == d.currentFeedUrl {
-			currentFeed = cachedFeed
+			f = cachedFeed
 		}
 	}
 
 	d.rendered = make([][]*cell, 0)
-	if currentFeed != nil {
-		for _, item := range currentFeed.GetItemsOrderedByDate() {
-			if item.New {
+	if f != nil {
+		for _, item := range f.GetItemsOrderedByDate() {
+			if item.Unread {
 				d.appendToRendered(fromStringWithStyle(util.RenderArticleRow(item.PubDate, item.Title), ansi.BOLD))
 			} else {
 				d.appendToRendered(fromString(util.RenderArticleRow(item.PubDate, item.Title)))
@@ -57,7 +51,6 @@ func (d *display) renderArticlesList() {
 	} else {
 		d.setTmpBottomMessage(1*time.Second, "cannot load article list!")
 	}
-
 }
 
 func (d *display) renderArticleText() {

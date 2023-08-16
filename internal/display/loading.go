@@ -2,58 +2,38 @@ package display
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log"
-	"os"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/pkg/html"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/feed"
+	"github.com/giulianopz/newscanoe/internal/html"
+	"github.com/giulianopz/newscanoe/internal/util"
 )
 
-func (d *display) LoadURLs() error {
+func (d *display) LoadFeedList() error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	d.resetRows()
 
-	filePath, err := util.GetUrlsFilePath()
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Panicln(err)
-	}
-	defer file.Close()
-
-	empty, err := util.IsEmpty(file)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	if empty && len(d.cache.GetFeeds()) == 0 {
+	if len(d.config.Feeds) == 0 {
 		d.setBottomMessage("no feed url: type 'a' to add one now")
 	} else {
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-
-			url := scanner.Bytes()
-			if !strings.Contains(string(url), "#") {
-				d.appendToRaw(string(url))
-			}
+		sort.SliceStable(d.config.Feeds, func(i, j int) bool {
+			return strings.ToLower(d.config.Feeds[i].Name) < strings.ToLower(d.config.Feeds[j].Name)
+		})
+		for _, f := range d.config.Feeds {
+			d.appendToRaw(f.Url)
 		}
 		d.setBottomMessage(urlsListSectionMsg)
 	}
 
-	d.resetCoordinates()
-
-	d.renderURLs()
+	d.renderFeedList()
 
 	d.setTopMessage("")
 
@@ -63,34 +43,33 @@ func (d *display) LoadURLs() error {
 	return nil
 }
 
-func (d *display) loadFeed(url string) {
+func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	parsedFeed, err := d.parser.ParseURL(url)
+	parsedFeed, err := d.parser.Parse(url)
 	if err != nil {
 		log.Default().Println(err)
 		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
-		return
+		return nil, err
 	}
 
 	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
 		d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
-		return
+		return nil, err
 	}
-
-	d.currentFeedUrl = url
 
 	go func() {
 		if err := d.cache.Encode(); err != nil {
 			log.Default().Println(err.Error())
 		}
 	}()
+	return parsedFeed, nil
 }
 
-func (d *display) loadAllFeeds() {
+func (d *display) fetchAllFeeds() {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -103,7 +82,7 @@ func (d *display) loadAllFeeds() {
 
 		log.Default().Printf("loading feed #%d from url %s\n", id, url)
 
-		parsedFeed, err := d.parser.ParseURL(url)
+		parsedFeed, err := d.parser.Parse(url)
 		if err != nil {
 			log.Default().Println(err)
 			d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
@@ -130,20 +109,22 @@ func (d *display) loadAllFeeds() {
 
 }
 
-func (d *display) loadArticlesList(url string) {
+func (d *display) loadArticleList(url string) error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	var found bool
 	for _, cachedFeed := range d.cache.GetFeeds() {
+
 		if cachedFeed.Url == url {
+
+			found = true
 
 			if len(cachedFeed.Items) == 0 {
 				d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
-				return
+				return fmt.Errorf("feed not loaded")
 			}
-
-			cachedFeed.New = false
 
 			d.resetRows()
 
@@ -151,12 +132,10 @@ func (d *display) loadArticlesList(url string) {
 				d.appendToRaw(item.Url)
 			}
 
-			d.resetCoordinates()
-
 			d.currentSection = ARTICLES_LIST
 			d.currentFeedUrl = url
 
-			d.renderArticlesList()
+			d.renderArticleList()
 
 			var browserHelp string
 			if !util.IsHeadless() {
@@ -168,7 +147,7 @@ func (d *display) loadArticlesList(url string) {
 				lynxHelp = " | l = open with lynx"
 			}
 
-			d.setTopMessage(fmt.Sprintf("> %s", cachedFeed.Title))
+			d.setTopMessage(fmt.Sprintf("> %s", cachedFeed.Name))
 			d.setBottomMessage(fmt.Sprintf("%s %s %s", articlesListSectionMsg, browserHelp, lynxHelp))
 
 			go func() {
@@ -178,14 +157,20 @@ func (d *display) loadArticlesList(url string) {
 			}()
 		}
 	}
+	if !found {
+		d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
+		return fmt.Errorf("cannot find articles of feed with url: %s", url)
+	}
+	return nil
 }
 
-func (d *display) loadArticleText(url string) {
+func (d *display) loadArticleText(url string) error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	for _, cachedFeed := range d.cache.GetFeeds() {
+
 		if cachedFeed.Url == d.currentFeedUrl {
 
 			for _, i := range cachedFeed.Items {
@@ -196,10 +181,10 @@ func (d *display) loadArticleText(url string) {
 					if err != nil {
 						log.Default().Println(err)
 						d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
-						return
+						return fmt.Errorf("cannot load aricle")
 					}
 
-					i.New = false
+					i.Unread = false
 
 					d.resetRows()
 
@@ -211,14 +196,12 @@ func (d *display) loadArticleText(url string) {
 						}
 					}
 
-					d.resetCoordinates()
-
 					d.renderArticleText()
 
 					d.currentArticleUrl = url
 					d.currentSection = ARTICLE_TEXT
 
-					d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Title, i.Title))
+					d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Name, i.Title))
 					d.setBottomMessage(articleTextSectionMsg)
 
 					go func() {
@@ -232,26 +215,36 @@ func (d *display) loadArticleText(url string) {
 			}
 		}
 	}
+	return nil
 }
 
 func (d *display) addEnteredFeedUrl() {
 
 	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
 
-	if !d.canBeParsed(url) {
-		d.setTmpBottomMessage(3*time.Second, "feed url not valid!")
+	for _, f := range d.config.Feeds {
+		if f.Url == url {
+			d.setTmpBottomMessage(3*time.Second, "already added!")
+			return
+		}
+	}
+
+	parsedFeed, err := d.fetchFeed(url)
+	if err != nil {
+		log.Default().Println(err)
+		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
 		return
 	}
 
-	if err := util.AppendUrl(url); err != nil {
+	if err := d.config.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
+		d.setTmpBottomMessage(3*time.Second, "cannot add new feed to config!")
+		return
+	}
 
-		var target *util.UrlAlreadyPresentErr
-		if errors.As(err, &target) {
-			d.setTmpBottomMessage(3*time.Second, err.Error())
-			return
-		}
-		d.setTmpBottomMessage(3*time.Second, "cannot save url in config file!")
+	if err := d.config.Encode(); err != nil {
+		log.Default().Println(err)
+		d.setTmpBottomMessage(3*time.Second, "cannot write new feed to config!")
 		return
 	}
 
@@ -260,8 +253,6 @@ func (d *display) addEnteredFeedUrl() {
 	d.current.cx = 1
 	d.current.cy = len(d.raw) % d.getContentWindowLen()
 	d.current.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
-
-	d.loadFeed(url)
 
 	d.setBottomMessage(urlsListSectionMsg)
 	d.setTmpBottomMessage(3*time.Second, "new feed saved!")

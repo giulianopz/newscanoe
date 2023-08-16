@@ -1,18 +1,16 @@
 package newscanoe
 
 import (
-	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"syscall"
 
-	"github.com/giulianopz/newscanoe/pkg/display"
-	"github.com/giulianopz/newscanoe/pkg/termios"
-	"github.com/giulianopz/newscanoe/pkg/xterm"
+	"github.com/giulianopz/newscanoe/internal/display"
+	"github.com/giulianopz/newscanoe/internal/termios"
+	"github.com/giulianopz/newscanoe/internal/xterm"
 )
 
 var (
@@ -24,32 +22,29 @@ var (
 	}
 )
 
-func Run() {
-
-	flag.BoolVar(&display.DebugMode, "d", false, "enable debug mode")
-	flag.Parse()
-
-	if !display.DebugMode {
-		log.SetOutput(io.Discard)
-	}
+func Run(debugMode bool) {
 
 	signal.Notify(sigC, signals...)
 
 	origTermios := termios.EnableRawMode(os.Stdin.Fd())
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
-	d := display.New()
+	d := display.New(debugMode)
 	w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
 	if err != nil {
 		log.Panicln(err)
 	}
 	d.SetWindowSize(w, h)
 
+	if err := d.LoadConfig(); err != nil {
+		log.Panicln(err)
+	}
+
 	if err := d.LoadCache(); err != nil {
 		log.Panicln(err)
 	}
 
-	if err := d.LoadURLs(); err != nil {
+	if err := d.LoadFeedList(); err != nil {
 		log.Panicln(err)
 	}
 

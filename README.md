@@ -1,7 +1,7 @@
 ## Newscanoe
 
 Newscanoe aims to be a minimal reimplementation of the glorious [newsboat](https://newsboat.org/): 
-- for UNIX systems and terminal emulators supporting standard [VT100](https://en.wikipedia.org/wiki/VT100) escape sequences (i.e. xterm-derived)
+- for UNIX systems and terminal emulators supporting standard VT100 escape sequences (i.e. xterm-derived)
 - written in Go but rigorously nonglamorous (i.e. vim-like)
 - meant to be lighter and easier to build from source and to distribute.
 
@@ -9,13 +9,12 @@ A tool for all of you information junkies, as simple as you always secretly desi
 
 ### Configuration
 
-The only config file consists of urls of RSS/Atom feeds listed line-by-line (see the [urls sample file](./assets/urls)) and located in the directory `$XDG_CONFIG_HOME/newscanoe` or `$HOME/.config/newscanoe`.
+A single YAML file (`config.yaml`) is used to configure the app: it consists of a list of feeds with a name and a url (see the [urls sample file](./assets/config.yaml)) and it is located in the directory `$XDG_CONFIG_HOME/newscanoe` (or `$HOME/.config/newscanoe`).
 
-If such file does not already exist, it will be created at the first execution of the app and you will be able to manually insert a url by typing `a`. Otherwise create such file with any text editor.
+If such file does not already exist, it will be created at the first execution of the app and you will be prompted to manually insert a url by typing `a`. 
+You can then edit such file with any text editor (`vi` is the default, unless `EDITOR` environment variable is set) by running: `newscanoe -e`. 
 
-Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` or `$HOME/.cache/newscanoe`.
-
-Currently, the app uses just the black and white colours to highlight the different UI components.
+Once loaded, feeds are cached in the directory `$XDG_CACHE_HOME/newscanoe` (or `$HOME/.cache/newscanoe`). The cache can be cleaned up by running `newscanoe -c`
 
 ### Keybindings
 

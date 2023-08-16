@@ -7,6 +7,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func RenderFeedRow(unreadCount, itemsLen int, name string) string {
+	count := fmt.Sprintf("(%d/%d)", unreadCount, itemsLen)
+	return fmt.Sprintf("%-20s %s", count, name)
+}
+
 var NoPubDate time.Time = time.Date(1001, 1, 1, 1, 1, 1, 1, time.UTC)
 
 func RenderArticleRow(pubDate time.Time, title string) string {

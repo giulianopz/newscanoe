@@ -4,22 +4,20 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"sync"
 	"time"
 	"unicode/utf8"
 
-	"github.com/giulianopz/newscanoe/pkg/ansi"
-	"github.com/giulianopz/newscanoe/pkg/app"
-	"github.com/giulianopz/newscanoe/pkg/ascii"
-	"github.com/giulianopz/newscanoe/pkg/cache"
-	"github.com/giulianopz/newscanoe/pkg/util"
-	"github.com/giulianopz/newscanoe/pkg/xterm"
-	"github.com/mmcdole/gofeed"
+	"github.com/giulianopz/newscanoe/internal/ansi"
+	"github.com/giulianopz/newscanoe/internal/app"
+	"github.com/giulianopz/newscanoe/internal/ascii"
+	"github.com/giulianopz/newscanoe/internal/cache"
+	"github.com/giulianopz/newscanoe/internal/config"
+	"github.com/giulianopz/newscanoe/internal/feed"
+	"github.com/giulianopz/newscanoe/internal/util"
+	"github.com/giulianopz/newscanoe/internal/xterm"
 )
-
-var DebugMode bool
 
 // display sections
 const (
@@ -31,7 +29,7 @@ const (
 // num of lines reserved to top and bottom bars plus a final empty row
 const (
 	TOP_PADDING    = 2
-	BOTTOM_PADDING = 3
+	BOTTOM_PADDING = 2
 )
 
 // bottom bar messages
@@ -113,6 +111,8 @@ enclosed by two bars displaying some navigation context to the user
 ----------------
 */
 type display struct {
+	debugMode bool
+
 	mu sync.Mutex
 
 	// current position of cursor
@@ -128,6 +128,9 @@ type display struct {
 	raw [][]byte
 	// display rendered text
 	rendered [][]*cell
+
+	// YAML config
+	config *config.Config
 	// gob cache
 	cache *cache.Cache
 
@@ -140,16 +143,14 @@ type display struct {
 
 	ListenToKeyStrokes bool
 
-	client *http.Client
-
-	parser *gofeed.Parser
+	parser *feed.Parser
 
 	editingMode bool
 	editingBuf  []string
 
 	currentSection    int
-	currentArticleUrl string
 	currentFeedUrl    string
+	currentArticleUrl string
 }
 
 type pos struct {
@@ -185,9 +186,10 @@ func (d *display) restorePos() {
 	}
 }
 
-func New() *display {
+func New(debugMode bool) *display {
 
 	d := &display{
+		debugMode: debugMode,
 		current: &pos{
 			cx:       1,
 			cy:       1,
@@ -195,12 +197,10 @@ func New() *display {
 			endoff:   0,
 		},
 		previous:           make([]*pos, 0),
-		cache:              cache.NewCache(),
 		ListenToKeyStrokes: true,
-		client: &http.Client{
-			Timeout: 3 * time.Second,
-		},
-		parser: gofeed.NewParser(),
+		config:             &config.Config{},
+		cache:              cache.NewCache(),
+		parser:             feed.NewParser(),
 	}
 	return d
 }
@@ -255,11 +255,17 @@ func (d *display) Quit(quitC chan bool) {
 
 	d.ListenToKeyStrokes = false
 
-	fmt.Fprint(os.Stdout, ansi.ShowCursor())
-	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
-	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
+	// this is just what 'clear' does:
+	// $ clear  | od -c
+	// 0000000 033   [   H 033   [   2   J 033   [   3   J
+	// 0000013
+	// please, read here: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
 
-	fmt.Fprint(os.Stdout, xterm.CLEAR_SCROLLBACK_BUFFER)
+	fmt.Fprint(os.Stdout, ansi.ShowCursor())
+	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
+	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	fmt.Fprint(os.Stdout, ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
+
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 
 	quitC <- true
@@ -281,7 +287,7 @@ func (d *display) currentUrl() string {
 	return string(d.raw[d.currentRow()])
 }
 
-func (d *display) resetCoordinates() {
+func (d *display) resetCurrentPos() {
 	d.current.cy = 1
 	d.current.cx = 1
 	d.current.startoff = 0
@@ -312,6 +318,20 @@ func (d *display) deleteCharAt(i int) {
 	}
 }
 
+func (d *display) LoadConfig() error {
+	configFile, err := util.GetConfigFilePath()
+	if err != nil {
+		return err
+	}
+
+	if util.Exists(configFile) {
+		if err := d.config.Decode(configFile); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *display) LoadCache() error {
 	cachePath, err := util.GetCacheFilePath()
 	if err != nil {
@@ -319,10 +339,12 @@ func (d *display) LoadCache() error {
 	}
 
 	if util.Exists(cachePath) {
-		if err := d.cache.Decode(); err != nil {
+		if err := d.cache.Decode(cachePath); err != nil {
 			return err
 		}
 	}
+
+	d.cache.Merge(d.config)
 	return nil
 }
 
@@ -337,18 +359,10 @@ func (d *display) enterEditingMode() {
 	d.editingMode = true
 	d.editingBuf = []string{}
 
-	d.current.cy = d.height - 1
+	d.current.cy = d.height
 	d.current.cx = 1
 
 	d.setBottomMessage("")
-}
-
-func (d *display) canBeParsed(url string) bool {
-	if _, err := d.parser.ParseURL(url); err != nil {
-		log.Default().Printf("cannot parse feed url: %v\n", err)
-		return false
-	}
-	return true
 }
 
 func (d *display) draw(buf *bytes.Buffer) {
@@ -378,6 +392,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for k := 0; k < d.width; k++ {
 		write(buf, "-", "cannot write hyphen")
 	}
+	write(buf, "\r\n", "cannot write carriage return")
 
 	d.setMaxEndOff()
 
@@ -436,7 +451,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
 
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
-	if DebugMode {
+	if d.debugMode {
 		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width)
 	}
 
@@ -452,7 +467,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 		}
 		write(buf, d.bottomRightCorner, "cannot write bottom right corner text")
 	}
-
 	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
 }
 
@@ -468,17 +482,19 @@ func (d *display) RefreshScreen() {
 
 	buf := &bytes.Buffer{}
 
-	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
 	buf.WriteString(ansi.HideCursor())
 	buf.WriteString(ansi.MoveCursor(1, 1))
+
+	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
+	buf.WriteString(ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
 
 	switch d.currentSection {
 
 	case URLS_LIST:
-		d.renderURLs()
+		d.renderFeedList()
 
 	case ARTICLES_LIST:
-		d.renderArticlesList()
+		d.renderArticleList()
 
 	case ARTICLE_TEXT:
 		d.renderArticleText()

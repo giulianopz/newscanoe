@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/giulianopz/newscanoe/pkg/ascii"
+	"github.com/giulianopz/newscanoe/internal/ascii"
 )
 
 func TestRenderText(t *testing.T) {
@@ -41,7 +41,7 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 [rss feed](/rss) \| [twitter](http://twitter.com/antirezdotcom) \| [google group](https://groups.google.com/forum/?fromgroups#!forum/redis-db) \| [old site](http://oldblog.antirez.com):
 `
 
-	d := New()
+	d := New(false)
 
 	t.Run("re-renders text as it is if window size does not change", func(t *testing.T) {
 		t.Cleanup(d.resetRows)

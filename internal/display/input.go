@@ -6,8 +6,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/giulianopz/newscanoe/pkg/ascii"
-	"github.com/giulianopz/newscanoe/pkg/util"
+	"github.com/giulianopz/newscanoe/internal/ascii"
+	"github.com/giulianopz/newscanoe/internal/util"
 	"golang.org/x/sys/unix"
 )
 
@@ -144,7 +144,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'r':
 		if d.currentSection == URLS_LIST {
-			d.loadFeed(string(d.raw[d.currentRow()]))
+			d.fetchFeed(string(d.raw[d.currentRow()]))
 		}
 
 	case 'a':
@@ -154,7 +154,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'R':
 		if d.currentSection == URLS_LIST {
-			d.loadAllFeeds()
+			d.fetchAllFeeds()
 		}
 
 	case 'o':
@@ -188,12 +188,20 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			case URLS_LIST:
 				{
 					d.trackPos()
-					d.loadArticlesList(d.currentUrl())
+					if err := d.loadArticleList(d.currentUrl()); err != nil {
+						d.restorePos()
+					} else {
+						d.resetCurrentPos()
+					}
 				}
 			case ARTICLES_LIST:
 				{
 					d.trackPos()
-					d.loadArticleText(d.currentUrl())
+					if err := d.loadArticleText(d.currentUrl()); err != nil {
+						d.restorePos()
+					} else {
+						d.resetCurrentPos()
+					}
 				}
 			}
 		}
@@ -203,7 +211,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 			switch d.currentSection {
 			case ARTICLES_LIST:
 				{
-					if err := d.LoadURLs(); err != nil {
+					if err := d.LoadFeedList(); err != nil {
 						log.Default().Printf("cannot load urls: %v", err)
 					}
 					d.currentFeedUrl = ""
@@ -211,7 +219,9 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 				}
 			case ARTICLE_TEXT:
 				{
-					d.loadArticlesList(d.currentFeedUrl)
+					if err := d.loadArticleList(d.currentFeedUrl); err != nil {
+						log.Default().Printf("cannot load article of feed with url %q: %v", d.currentFeedUrl, err)
+					}
 					d.currentArticleUrl = ""
 					d.restorePos()
 				}
@@ -276,7 +286,7 @@ func (d *display) whileEditing(input byte) {
 			d.setBottomMessage(urlsListSectionMsg)
 			d.setTmpBottomMessage(1*time.Second, "editing aborted!")
 			d.exitEditingMode()
-			d.resetCoordinates()
+			d.resetCurrentPos()
 		}
 	default:
 		{
@@ -291,23 +301,25 @@ func ctrlPlus(k byte) byte {
 
 func (d *display) moveCursor(direction byte) {
 
-	var renderedRowsLen int = len(d.rendered) - 1
+	var lastRow int = len(d.rendered) - 1
 
 	switch direction {
 	case ARROW_DOWN:
 
 		if d.currentSection == ARTICLE_TEXT {
-			if d.current.endoff < renderedRowsLen {
+			if d.current.endoff < lastRow {
 				d.current.startoff++
+			} else {
+				d.current.cy = d.getContentWindowLen()
 			}
 			return
 		}
 
 		if d.current.cy < d.getContentWindowLen() {
-			if d.currentRow()+1 <= renderedRowsLen {
+			if d.currentRow()+1 <= lastRow {
 				d.current.cy++
 			}
-		} else if d.current.endoff < renderedRowsLen {
+		} else if d.current.endoff < lastRow {
 			d.current.startoff++
 		}
 	case ARROW_UP:
@@ -315,12 +327,14 @@ func (d *display) moveCursor(direction byte) {
 		if d.currentSection == ARTICLE_TEXT {
 			if d.current.startoff > 0 {
 				d.current.startoff--
+			} else {
+				d.current.cy = 1
 			}
 			return
 		}
 
 		if d.current.cy > 1 {
-			if d.currentRow()-1 <= renderedRowsLen {
+			if d.currentRow()-1 <= lastRow {
 				d.current.cy--
 			}
 		} else if d.current.startoff > 0 {
@@ -335,19 +349,19 @@ func (d *display) scroll(dir byte) {
 	case PAGE_DOWN:
 		{
 
-			d.current.cy = d.getContentWindowLen()
-
-			var renderedRowsLen int = len(d.rendered) - 1
-			if d.current.endoff == renderedRowsLen {
+			var lastRow int = len(d.rendered) - 1
+			if d.current.endoff == lastRow {
 				return
 			}
 
+			d.current.cy = d.getContentWindowLen()
+
 			firstItemInNextPage := d.current.endoff + 1
-			if firstItemInNextPage < renderedRowsLen {
+			if firstItemInNextPage < lastRow {
 				d.current.startoff = firstItemInNextPage
 			} else {
 				d.current.startoff++
-				d.current.endoff = renderedRowsLen
+				d.current.endoff = lastRow
 			}
 		}
 	case PAGE_UP:
