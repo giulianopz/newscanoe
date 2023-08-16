@@ -1,12 +1,10 @@
 package edit
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/util"
@@ -55,24 +53,15 @@ func EditConfigFile() error {
 
 			buf := bytes.Buffer{}
 			buf.WriteString("# " + err.Error() + "\n")
-			buf.Write(bs)
+			buf.Write(util.StripComments(bs))
 			if err := os.WriteFile(configFilePath, buf.Bytes(), os.ModePerm); err != nil {
 				return err
 			}
 		} else {
 
-			buf := bytes.Buffer{}
-			s := bufio.NewScanner(bytes.NewReader(bs))
-			for s.Scan() {
-				line := s.Text()
-				if !strings.HasPrefix(line, "#") {
-					buf.WriteString(line + "\n")
-				}
-			}
-			if err := os.WriteFile(configFilePath, buf.Bytes(), os.ModePerm); err != nil {
+			if err := os.WriteFile(configFilePath, util.StripComments(bs), os.ModePerm); err != nil {
 				return err
 			}
-
 			break
 		}
 	}

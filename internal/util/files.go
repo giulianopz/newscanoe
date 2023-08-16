@@ -1,11 +1,14 @@
 package util
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/giulianopz/newscanoe/internal/app"
 )
@@ -64,4 +67,16 @@ func Exists(path string) bool {
 		log.Panicln(err)
 		return false
 	}
+}
+
+func StripComments(bs []byte) []byte {
+	buf := bytes.Buffer{}
+	s := bufio.NewScanner(bytes.NewReader(bs))
+	for s.Scan() {
+		line := s.Text()
+		if !strings.HasPrefix(line, "#") {
+			buf.WriteString(line + "\n")
+		}
+	}
+	return buf.Bytes()
 }
