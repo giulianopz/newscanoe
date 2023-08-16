@@ -144,7 +144,11 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'r':
 		if d.currentSection == URLS_LIST {
-			d.fetchFeed(string(d.raw[d.currentRow()]))
+			if _, err := d.fetchFeed(string(d.raw[d.currentRow()])); err != nil {
+				log.Default().Println(err)
+				d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
+				return
+			}
 		}
 
 	case 'a':
