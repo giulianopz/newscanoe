@@ -11,6 +11,7 @@ import (
 	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/html"
 	"github.com/giulianopz/newscanoe/internal/util"
+	"golang.org/x/sync/errgroup"
 )
 
 func (d *display) LoadFeedList() error {
@@ -71,35 +72,48 @@ func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 
 func (d *display) fetchAllFeeds() {
 
+	start := time.Now()
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	origMsg := d.bottomBarMsg
+	d.setBottomMessage("loading all feeds, please wait...")
+	d.RefreshScreen()
+
+	g := new(errgroup.Group)
+	g.SetLimit(-1)
 
 	for id := range d.raw {
 
-		url := string(d.raw[id])
+		id := id
 
-		log.Default().Printf("loading feed #%d from url %s\n", id, url)
+		g.Go(func() error {
+			url := string(d.raw[id])
 
-		parsedFeed, err := d.parser.Parse(url)
-		if err != nil {
-			log.Default().Println(err)
-			d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
-			return
-		}
+			log.Default().Printf("loading feed #%d from url %s\n", id, url)
 
-		if err := d.cache.AddFeed(parsedFeed, url); err != nil {
-			log.Default().Println(err)
-			d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
-			return
-		}
+			parsedFeed, err := d.parser.Parse(url)
+			if err != nil {
+				log.Default().Println(err)
+				return err
+			}
 
-		d.setBottomMessage(fmt.Sprintf("loading all feeds, please wait........%d/%d", id+1, len(d.raw)))
-		d.RefreshScreen()
+			if err := d.cache.AddFeed(parsedFeed, url); err != nil {
+				log.Default().Println(err)
+				return err
+			}
+			return nil
+		})
+
+	}
+	d.setBottomMessage(origMsg)
+
+	if err := g.Wait(); err != nil {
+		d.setTmpBottomMessage(3*time.Second, "cannot reload all feeds!")
 	}
 
-	d.setBottomMessage(origMsg)
+	d.RefreshScreen()
 
 	go func() {
 		if err := d.cache.Encode(); err != nil {
@@ -107,6 +121,7 @@ func (d *display) fetchAllFeeds() {
 		}
 	}()
 
+	log.Default().Println("reloaded all feeds in: ", time.Since(start))
 }
 
 func (d *display) loadArticleList(url string) error {
