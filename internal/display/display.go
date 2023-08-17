@@ -263,8 +263,8 @@ func (d *display) Quit(quitC chan bool) {
 
 	fmt.Fprint(os.Stdout, ansi.ShowCursor())
 	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
-	fmt.Fprint(os.Stdout, ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
-	fmt.Fprint(os.Stdout, ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
+	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
+	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
 
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 
@@ -485,8 +485,8 @@ func (d *display) RefreshScreen() {
 	buf.WriteString(ansi.HideCursor())
 	buf.WriteString(ansi.MoveCursor(1, 1))
 
-	buf.WriteString(ansi.Erase(ansi.ERASE_ENTIRE_SCREEN))
-	buf.WriteString(ansi.Erase(xterm.CLEAR_SCROLLBACK_BUFFER))
+	buf.WriteString(ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
+	buf.WriteString(ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
 
 	switch d.currentSection {
 

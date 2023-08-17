@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/giulianopz/newscanoe/internal/bar"
 	"github.com/giulianopz/newscanoe/internal/feed"
 	"github.com/giulianopz/newscanoe/internal/html"
 	"github.com/giulianopz/newscanoe/internal/util"
@@ -79,49 +80,59 @@ func (d *display) fetchAllFeeds() {
 
 	origMsg := d.bottomBarMsg
 	d.setBottomMessage("loading all feeds, please wait...")
+	// TODO fix
 	d.RefreshScreen()
+
+	pb := bar.NewProgressBar(d.height, 1, d.width, len(d.raw))
 
 	g := new(errgroup.Group)
 	g.SetLimit(-1)
 
-	for id := range d.raw {
+	urls := append(d.raw)
 
-		id := id
+	for len(urls) > 0 {
+
+		url := urls[0]
 
 		g.Go(func() error {
-			url := string(d.raw[id])
 
-			log.Default().Printf("loading feed #%d from url %s\n", id, url)
+			log.Default().Printf("loading feed url: %s\n", string(url))
 
-			parsedFeed, err := d.parser.Parse(url)
+			parsedFeed, err := d.parser.Parse(string(url))
 			if err != nil {
 				log.Default().Println(err)
 				return err
 			}
 
-			if err := d.cache.AddFeed(parsedFeed, url); err != nil {
+			if err := d.cache.AddFeed(parsedFeed, string(url)); err != nil {
 				log.Default().Println(err)
 				return err
 			}
+
+			pb.IncrByOne()
+			pb.PrintOut()
+
 			return nil
 		})
 
+		urls = urls[1:]
 	}
+
 	d.setBottomMessage(origMsg)
 
 	if err := g.Wait(); err != nil {
 		d.setTmpBottomMessage(3*time.Second, "cannot reload all feeds!")
+	} else {
+		go func() {
+			if err := d.cache.Encode(); err != nil {
+				log.Default().Println(err.Error())
+			}
+		}()
+
+		log.Default().Println("reloaded all feeds in: ", time.Since(start))
 	}
 
 	d.RefreshScreen()
-
-	go func() {
-		if err := d.cache.Encode(); err != nil {
-			log.Default().Println(err.Error())
-		}
-	}()
-
-	log.Default().Println("reloaded all feeds in: ", time.Since(start))
 }
 
 func (d *display) loadArticleList(url string) error {
