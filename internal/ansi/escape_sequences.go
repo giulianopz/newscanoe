@@ -19,7 +19,8 @@ const (
 
 	MOVE_CURSOR_FMT = csi + "%d;%dH"
 	SGR_FMT         = csi + "%sm"
-	ERASE_FMT       = csi + "%dJ"
+	ERASE_EOS_FMT   = csi + "%dJ"
+	ERASE_EOL_FMT   = csi + "%dK"
 	SET_MODE_FMT    = csi + "%sh"
 	RESET_MODE      = csi + "%sl"
 )
@@ -42,8 +43,12 @@ func WhiteFG() string {
 	return SGR(38, 2, 255, 255, 255)
 }
 
-func Erase(n int) string {
-	return fmt.Sprintf(ERASE_FMT, n)
+func EraseToEndOfScreen(n int) string {
+	return fmt.Sprintf(ERASE_EOS_FMT, n)
+}
+
+func EraseToEndOfLine(n int) string {
+	return fmt.Sprintf(ERASE_EOL_FMT, n)
 }
 
 func SetMode(params ...string) string {
