@@ -20,6 +20,7 @@ TUI:
 
 VT100:
 - [VT100.net](https://vt100.net/)
+- [VT100 escape codes](https://espterm.github.io/docs/VT100%20escape%20codes.html)
 
 Colors:
 - [How to change the color of your Linux terminal](https://opensource.com/article/19/9/linux-terminal-colors)
