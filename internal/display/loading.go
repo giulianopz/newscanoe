@@ -78,8 +78,6 @@ func (d *display) fetchAllFeeds() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	origMsg := d.bottomBarMsg
-
 	pb := bar.NewProgressBar(d.height, 1, d.width, len(d.raw))
 
 	g := new(errgroup.Group)
@@ -114,8 +112,6 @@ func (d *display) fetchAllFeeds() {
 		urls = urls[1:]
 	}
 
-	d.setBottomMessage(origMsg)
-
 	if err := g.Wait(); err != nil {
 		d.setTmpBottomMessage(3*time.Second, "cannot reload all feeds!")
 	} else {
@@ -127,9 +123,6 @@ func (d *display) fetchAllFeeds() {
 
 		log.Default().Println("reloaded all feeds in: ", time.Since(start))
 	}
-
-	// TODO fix
-	d.RefreshScreen()
 }
 
 func (d *display) loadArticleList(url string) error {
