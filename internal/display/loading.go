@@ -104,7 +104,6 @@ func (d *display) fetchAllFeeds() {
 			}
 
 			pb.IncrByOne()
-			pb.PrintOut()
 
 			return nil
 		})

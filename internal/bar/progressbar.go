@@ -72,9 +72,11 @@ func (pb *ProgressBar) IncrByOne() {
 	for i := 0; i <= pb.limit; i++ {
 		pb.bar[i] = hashMark
 	}
+
+	pb.printCurrentState()
 }
 
-func (pb *ProgressBar) PrintOut() {
+func (pb *ProgressBar) printCurrentState() {
 	fmt.Fprint(os.Stdout, ansi.MoveCursor(pb.y, pb.x))
 	fmt.Fprint(os.Stdout, ansi.EraseToEndOfLine(2))
 	fmt.Fprint(os.Stdout, ansi.SGR(ansi.REVERSE_COLOR))
