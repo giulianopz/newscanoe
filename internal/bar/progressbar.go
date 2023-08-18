@@ -85,4 +85,5 @@ func (pb *ProgressBar) printCurrentState() {
 	bar := fmt.Sprintf(progressBarFmt, string(pb.bar))
 
 	fmt.Fprintf(os.Stdout, "%s %s", percentage, bar)
+	fmt.Fprint(os.Stdout, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 }
