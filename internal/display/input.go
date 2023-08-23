@@ -264,11 +264,11 @@ func (d *display) whileEditing(input byte) {
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
 			}
 		}
-
 	case input == ascii.BACKSPACE:
 		{
-			if len(d.editingBuf) != 0 && d.current.cx == len(d.editingBuf)+1 {
-				d.deleteCharAt(len(d.editingBuf) - 1)
+			i := d.current.cx - 1
+			if len(d.editingBuf) != 0 && i != 0 {
+				d.deleteCharAt(i - 1)
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
 				d.current.cx--
 			}
