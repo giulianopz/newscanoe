@@ -11,7 +11,6 @@ import (
 
 	"github.com/giulianopz/newscanoe/internal/ansi"
 	"github.com/giulianopz/newscanoe/internal/app"
-	"github.com/giulianopz/newscanoe/internal/ascii"
 	"github.com/giulianopz/newscanoe/internal/cache"
 	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/feed"
@@ -64,8 +63,8 @@ func fromStringWithStyle(s string, params ...int) []*cell {
 		cells = append(cells, newCell(r).withStyle(params...))
 	}
 	if len(cells) != 0 {
-		cells = append([]*cell{newCell(ascii.NULL).withStyle(params...)}, cells...)
-		cells = append(cells, newCell(ascii.NULL).withStyle(ansi.ALL_ATTRIBUTES_OFF))
+		cells = append([]*cell{newCell(NULL).withStyle(params...)}, cells...)
+		cells = append(cells, newCell(NULL).withStyle(ansi.ALL_ATTRIBUTES_OFF))
 	}
 	return cells
 }
@@ -79,7 +78,7 @@ func (c cell) String() string {
 	if len(c.params) == 0 {
 		return string(c.char)
 	}
-	if c.char == ascii.NULL {
+	if c.char == NULL {
 		return ansi.SGR(c.params...)
 	}
 	return ansi.SGR(c.params...) + string(c.char)
@@ -408,7 +407,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		var runes int
 		for _, c := range row {
-			if c.char != ascii.NULL {
+			if c.char != NULL {
 				runes++
 			}
 		}

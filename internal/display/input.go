@@ -13,7 +13,8 @@ import (
 
 // keys
 const (
-	ARROW_LEFT = iota
+	NULL = iota
+	ARROW_LEFT
 	ARROW_RIGHT
 	ARROW_UP
 	ARROW_DOWN
@@ -65,10 +66,10 @@ func readKeyStroke(fd uintptr) byte {
 					}
 					if subseq[0] == '0' && subseq[1] == '~' {
 						log.Default().Println("started pasting")
-						return ascii.NULL
+						return NULL
 					} else if subseq[0] == '1' && subseq[1] == '~' {
 						log.Default().Println("done pasting")
-						return ascii.NULL
+						return NULL
 					}
 				}
 
@@ -242,7 +243,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 func (d *display) whileEditing(input byte) {
 	switch {
 
-	case input == ascii.NULL:
+	case input == NULL:
 		log.Default().Println("pasting...")
 
 	case input == ARROW_LEFT:

@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
-
-	"github.com/giulianopz/newscanoe/internal/ascii"
 )
 
 func TestRenderText(t *testing.T) {
@@ -70,7 +68,7 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 		for row := range after {
 			var currentRowLen int
 			for _, c := range after[row] {
-				if c.char != ascii.NULL {
+				if c.char != NULL {
 					currentRowLen++
 				}
 			}
@@ -108,7 +106,7 @@ For all those reasons, I love linked lists, and I hope that you will, at least, 
 		for row := range after {
 			var currentRowLen int
 			for _, c := range after[row] {
-				if c.char != ascii.NULL {
+				if c.char != NULL {
 					currentRowLen++
 				}
 			}
