@@ -279,7 +279,7 @@ func (d *display) whileEditing(input byte) {
 		}
 	case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 		{
-			if d.current.cx < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
+			if len(d.editingBuf) < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
 				i := d.current.cx - 1
 				d.insertCharAt(string(input), i)
 				d.setBottomMessage(strings.Join(d.editingBuf, ""))
