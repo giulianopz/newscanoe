@@ -2,9 +2,7 @@ package display
 
 import (
 	"log"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/giulianopz/newscanoe/internal/ascii"
 	"github.com/giulianopz/newscanoe/internal/util"
@@ -247,30 +245,43 @@ func (d *display) whileEditing(input byte) {
 		log.Default().Println("pasting...")
 
 	case input == ARROW_LEFT:
-		if d.current.cx > 1 {
-			d.current.cx--
-		}
+		{
+			if d.current.cx > 1 {
+				d.current.cx--
+			}
 
+			if d.current.cx == 1 && d.editingBuf.offset > 0 {
+				d.editingBuf.offset--
+				d.setBottomMessage(d.editingBuf.fitTo(d.width))
+			}
+		}
 	case input == ARROW_RIGHT:
-		if d.current.cx < len(d.editingBuf)+1 {
-			d.current.cx++
+		{
+			if d.editingBuf.inBounds(d.current.cx) {
+				if d.current.cx < d.width {
+					d.current.cx++
+				} else if d.current.cx == d.width && d.current.cx-1+d.editingBuf.offset+1 < len(d.editingBuf.chars) {
+					d.editingBuf.offset++
+					d.setBottomMessage(d.editingBuf.fitTo(d.width))
+				}
+			}
 		}
-
 	case input == DEL_KEY:
 		{
-			i := d.current.cx - 1
-			if i < len(d.editingBuf) {
-				d.deleteCharAt(i)
-				d.setBottomMessage(strings.Join(d.editingBuf, ""))
+			if ok := d.editingBuf.delete(d.current.cx); ok {
+				if d.editingBuf.offset != 0 {
+					d.editingBuf.offset--
+				}
+				d.setBottomMessage(d.editingBuf.fitTo(d.width))
 			}
 		}
 	case input == ascii.BACKSPACE:
 		{
-			i := d.current.cx - 1
-			if len(d.editingBuf) != 0 && i != 0 {
-				d.deleteCharAt(i - 1)
-				d.setBottomMessage(strings.Join(d.editingBuf, ""))
-				d.current.cx--
+			if d.current.cx != 1 {
+				if ok := d.editingBuf.delete(d.current.cx - 1); ok {
+					d.current.cx--
+					d.setBottomMessage(d.editingBuf.fitTo(d.width))
+				}
 			}
 		}
 	case input == ascii.ENTER:
@@ -279,11 +290,14 @@ func (d *display) whileEditing(input byte) {
 		}
 	case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 		{
-			if len(d.editingBuf) < (d.width - utf8.RuneCountInString(d.bottomRightCorner) - 1) {
-				i := d.current.cx - 1
-				d.insertCharAt(string(input), i)
-				d.setBottomMessage(strings.Join(d.editingBuf, ""))
-				d.current.cx++
+			if ok := d.editingBuf.insert(input, d.current.cx); ok {
+				if d.current.cx < d.width {
+					d.current.cx++
+					d.setBottomMessage(d.editingBuf.String())
+				} else {
+					d.editingBuf.offset++
+					d.setBottomMessage(d.editingBuf.fitTo(d.width))
+				}
 			}
 		}
 	case input == QUIT:

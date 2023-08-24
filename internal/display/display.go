@@ -32,6 +32,8 @@ const (
 )
 
 // bottom bar messages
+// for Unicode codes, see: http://xahlee.info/comp/unicode_computing_symbols.html
+// some of them are not correctly rendered by gnome-terminal: https://gitlab.gnome.org/GNOME/vte/-/issues/2580
 const (
 	urlsListSectionMsg     = "HELP: q = quit | r = reload | R = reload all | a = add a feed"
 	articlesListSectionMsg = "HELP: \u21B5 = view article | \u232B = go back"
@@ -145,7 +147,7 @@ type display struct {
 	parser *feed.Parser
 
 	editingMode bool
-	editingBuf  []string
+	editingBuf  *buffer
 
 	currentSection    int
 	currentFeedUrl    string
@@ -297,26 +299,6 @@ func (d *display) resetRows() {
 	d.rendered = make([][]*cell, 0)
 }
 
-func (d *display) insertCharAt(c string, i int) {
-	if i == len(d.editingBuf) {
-		d.editingBuf = append(d.editingBuf, c)
-	} else {
-		d.editingBuf = append(d.editingBuf[:i+1], d.editingBuf[i:]...)
-		d.editingBuf[i] = c
-	}
-}
-
-func (d *display) deleteCharAt(i int) {
-	if i == len(d.editingBuf)-1 {
-		d.editingBuf[len(d.editingBuf)-1] = ""
-		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
-	} else {
-		copy(d.editingBuf[i:], d.editingBuf[i+1:])
-		d.editingBuf[len(d.editingBuf)-1] = ""
-		d.editingBuf = d.editingBuf[:len(d.editingBuf)-1]
-	}
-}
-
 func (d *display) LoadConfig() error {
 	configFile, err := util.GetConfigFilePath()
 	if err != nil {
@@ -349,14 +331,14 @@ func (d *display) LoadCache() error {
 
 func (d *display) exitEditingMode() {
 	d.editingMode = false
-	d.editingBuf = []string{}
+	d.editingBuf = nil
 }
 
 func (d *display) enterEditingMode() {
 	log.Default().Println("live editing enabled")
 
 	d.editingMode = true
-	d.editingBuf = []string{}
+	d.editingBuf = new(buffer)
 
 	d.current.cy = d.height
 	d.current.cx = 1
@@ -452,20 +434,19 @@ func (d *display) draw(buf *bytes.Buffer) {
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
 	if d.debugMode {
 		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width)
+	} else if d.editingMode {
+		d.bottomRightCorner = ""
 	}
 
-	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - 1
+	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - utf8.RuneCountInString(d.bottomRightCorner)
 	log.Default().Printf("bottom-padding: %d", padding)
 
-	if padding > 0 {
-		write(buf, fmt.Sprintf("%s %*s", d.bottomBarMsg, padding, d.bottomRightCorner), "cannot write bottom right corner text")
-	} else {
-		padding = d.width - utf8.RuneCountInString(d.bottomRightCorner)
-		for i := padding; i > 0; i-- {
-			write(buf, " ", "cannot write empty string")
-		}
-		write(buf, d.bottomRightCorner, "cannot write bottom right corner text")
+	write(buf, d.bottomBarMsg, "cannot write bottom bar text")
+	for i := padding; i > 0; i-- {
+		write(buf, " ", "cannot write empty string")
 	}
+	write(buf, d.bottomRightCorner, "cannot write bottom roght corner text")
+
 	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
 }
 
@@ -501,9 +482,11 @@ func (d *display) RefreshScreen() {
 
 	d.draw(buf)
 
-	buf.WriteString(ansi.MoveCursor(d.current.cy, d.current.cx))
 	if d.editingMode {
+		buf.WriteString(ansi.MoveCursor(d.height, d.current.cx))
 		buf.WriteString(ansi.ShowCursor())
+	} else {
+		buf.WriteString(ansi.MoveCursor(d.current.cy, d.current.cx))
 	}
 
 	fmt.Fprint(os.Stdout, buf)

@@ -235,7 +235,7 @@ func (d *display) loadArticleText(url string) error {
 
 func (d *display) addNewFeed() {
 
-	url := strings.TrimSpace(strings.Join(d.editingBuf, ""))
+	url := strings.TrimSpace(d.editingBuf.String())
 
 	for _, f := range d.config.Feeds {
 		if f.Url == url {
