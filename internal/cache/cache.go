@@ -88,7 +88,6 @@ func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) error {
 			for _, parsedItem := range parsedFeed.Items {
 
 				if !cachedFeed.HasItem(parsedItem.Title) {
-					parsedItem.Unread = true
 					cachedFeed.Items = append(cachedFeed.Items, parsedItem)
 				}
 			}

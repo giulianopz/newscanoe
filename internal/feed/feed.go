@@ -78,6 +78,7 @@ func NewItem(title, url string, pubDate time.Time) *Item {
 		Title:   title,
 		Url:     url,
 		PubDate: pubDate,
+		Unread:  true,
 	}
 }
 
