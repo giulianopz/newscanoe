@@ -236,7 +236,10 @@ func (d *display) setBottomMessage(msg string) {
 
 func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
 	previous := d.bottomBarMsg
+
+	writeToStdOut(ansi.HideCursor())
 	d.setBottomMessage(msg)
+
 	go func() {
 		time.AfterFunc(t, func() {
 			d.setBottomMessage(previous)
@@ -260,12 +263,12 @@ func (d *display) Quit(quitC chan bool) {
 	// $ clear  | od -c
 	// 0000000 033   [   H 033   [   2   J 033   [   3   J
 	// 0000013
-	// please, read here: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
+	// ref: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
 
-	fmt.Fprint(os.Stdout, ansi.ShowCursor())
-	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
-	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
-	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
+	writeToStdOut(ansi.ShowCursor())
+	writeToStdOut(ansi.MoveCursor(1, 1))
+	writeToStdOut(ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
+	writeToStdOut(ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
 
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 
@@ -350,30 +353,30 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* top bar */
 
-	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
+	writeToBuf(buf, ansi.SGR(ansi.REVERSE_COLOR))
 
 	padding := d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(d.topBarMsg) - 2
 	log.Default().Printf("top-padding: %d", padding)
 	if padding > 0 {
-		write(buf, fmt.Sprintf("%s %s %*s\r\n", app.Name, d.topBarMsg, padding, app.Version), "cannot write top bar")
+		writeToBuf(buf, fmt.Sprintf("%s %s %*s\r\n", app.Name, d.topBarMsg, padding, app.Version))
 	} else {
-		write(buf, app.Name, "cannot write top bar")
+		writeToBuf(buf, app.Name)
 
 		padding = d.width - utf8.RuneCountInString(app.Name) - utf8.RuneCountInString(app.Version)
 		for i := padding; i > 0; i-- {
-			write(buf, " ", "cannot write empty char")
+			writeToBuf(buf, " ")
 		}
-		write(buf, fmt.Sprintf("%s\r\n", app.Version), "cannot write app version")
+		writeToBuf(buf, fmt.Sprintf("%s\r\n", app.Version))
 	}
 
-	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot write reset escape sequence")
+	writeToBuf(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 
 	/* main content */
 
 	for k := 0; k < d.width; k++ {
-		write(buf, "-", "cannot write hyphen")
+		writeToBuf(buf, "-")
 	}
-	write(buf, "\r\n", "cannot write carriage return")
+	writeToBuf(buf, "\r\n")
 
 	d.setMaxEndOff()
 
@@ -382,7 +385,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	for i := d.current.startoff; i <= d.current.endoff; i++ {
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
+			writeToBuf(buf, ansi.SGR(ansi.REVERSE_COLOR))
 		}
 
 		row := d.rendered[i]
@@ -406,30 +409,30 @@ func (d *display) draw(buf *bytes.Buffer) {
 		}
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
-		write(buf, ansi.WhiteFG(), "cannot write escape for white foreground")
-		write(buf, line, "cannot write line")
+		writeToBuf(buf, ansi.WhiteFG())
+		writeToBuf(buf, line)
 
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
-			write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot write reset escape sequence")
+			writeToBuf(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 		}
 
-		write(buf, "\r\n", "cannot write carriage return")
+		writeToBuf(buf, "\r\n")
 
 		printed++
 	}
 
 	for ; printed < d.height-BOTTOM_PADDING-TOP_PADDING; printed++ {
-		write(buf, "\r\n", "cannot write carriage return")
+		writeToBuf(buf, "\r\n")
 	}
 
 	/* bottom bar */
 
 	for k := 0; k < d.width; k++ {
-		write(buf, "-", "cannot write hyphen")
+		writeToBuf(buf, "-")
 	}
-	write(buf, "\r\n", "cannot write carriage return")
+	writeToBuf(buf, "\r\n")
 
-	write(buf, ansi.SGR(ansi.REVERSE_COLOR), "cannot reverse color")
+	writeToBuf(buf, ansi.SGR(ansi.REVERSE_COLOR))
 
 	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
 	if d.debugMode {
@@ -441,18 +444,24 @@ func (d *display) draw(buf *bytes.Buffer) {
 	padding = d.width - utf8.RuneCountInString(d.bottomBarMsg) - utf8.RuneCountInString(d.bottomRightCorner)
 	log.Default().Printf("bottom-padding: %d", padding)
 
-	write(buf, d.bottomBarMsg, "cannot write bottom bar text")
+	writeToBuf(buf, d.bottomBarMsg)
 	for i := padding; i > 0; i-- {
-		write(buf, " ", "cannot write empty string")
+		writeToBuf(buf, " ")
 	}
-	write(buf, d.bottomRightCorner, "cannot write bottom roght corner text")
+	writeToBuf(buf, d.bottomRightCorner)
 
-	write(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF), "cannot reset display attributes")
+	writeToBuf(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 }
 
-func write(buf *bytes.Buffer, s, msg string) {
+func writeToStdOut(s string) {
+	if _, err := fmt.Fprint(os.Stdout, s); err != nil {
+		log.Default().Printf("cannot write %q to stdout: %v", s, err)
+	}
+}
+
+func writeToBuf(buf *bytes.Buffer, s string) {
 	if _, err := buf.WriteString(s); err != nil {
-		log.Default().Printf("%s: %v", msg, err)
+		log.Default().Printf("cannot write %q to buffer: %v", s, err)
 	}
 }
 
