@@ -78,7 +78,7 @@ func (pb *ProgressBar) IncrByOne() {
 
 func (pb *ProgressBar) printCurrentState() {
 	fmt.Fprint(os.Stdout, ansi.MoveCursor(pb.y, pb.x))
-	fmt.Fprint(os.Stdout, ansi.EraseToEndOfLine(2))
+	fmt.Fprint(os.Stdout, ansi.EraseToEndOfLine(ansi.ERASE_ENTIRE_LINE))
 	fmt.Fprint(os.Stdout, ansi.SGR(ansi.REVERSE_COLOR))
 
 	percentage := fmt.Sprintf(progressPercentageFmt, pb.percentage)

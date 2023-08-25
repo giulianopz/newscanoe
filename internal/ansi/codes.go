@@ -22,6 +22,7 @@ const (
 	SET_BG_COLOR       = 48
 	// erase
 	ERASE_ENTIRE_SCREEN = 2
+	ERASE_ENTIRE_LINE   = 2
 	//
 	CURSOR = 25
 )
