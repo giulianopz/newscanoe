@@ -260,7 +260,7 @@ func (d *display) whileEditing(input byte) {
 			if d.editingBuf.inBounds(d.current.cx) {
 				if d.current.cx < d.width {
 					d.current.cx++
-				} else if d.current.cx == d.width && d.current.cx-1+d.editingBuf.offset+1 < len(d.editingBuf.chars) {
+				} else {
 					d.editingBuf.offset++
 					d.setBottomMessage(d.editingBuf.fitTo(d.width))
 				}
@@ -291,7 +291,7 @@ func (d *display) whileEditing(input byte) {
 	case util.IsLetter(input), util.IsDigit(input), util.IsSpecialChar(input):
 		{
 			if ok := d.editingBuf.insert(input, d.current.cx); ok {
-				if d.current.cx < d.width {
+				if len(d.editingBuf.chars) < d.width {
 					d.current.cx++
 					d.setBottomMessage(d.editingBuf.String())
 				} else {
