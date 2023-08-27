@@ -361,7 +361,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	fmt.Fprint(buf, topBar.Build(d.width))
 	fmt.Fprint(buf, "\r\n")
 
-	fmt.Fprint(buf, util.LineOf(d.width, "-"))
+	fmt.Fprint(buf, util.LineOf(d.width, "\u2508"))
 	fmt.Fprint(buf, "\r\n")
 
 	/* main content */
@@ -415,7 +415,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* bottom bar */
 
-	fmt.Fprint(buf, util.LineOf(d.width, "-"))
+	fmt.Fprint(buf, util.LineOf(d.width, "\u2508"))
 	fmt.Fprint(buf, "\r\n")
 
 	bottomBar := bar.NewBar()

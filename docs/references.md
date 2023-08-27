@@ -10,13 +10,14 @@ Commands:
 - [infocmp - Compare or print the terminal description](https://www.ibm.com/docs/en/zos/2.4.0?topic=descriptions-infocmp-compare-print-terminal-description)
 
 Emulators:
-[Anatomy of a Terminal Emulator](https://poor.dev/blog/terminal-anatomy/)
+- [Anatomy of a Terminal Emulator](https://poor.dev/blog/terminal-anatomy/)
 
 ANSI:
 - [ANSI escape code](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
 
 TUI:
 - [Want to create a TUI application? - The Basics of "Uncooked" Terminal IO](https://zig.news/lhp/want-to-create-a-tui-application-the-basics-of-uncooked-terminal-io-17gm)
+- [A new way of drawing boxes in the terminal (possibly)](https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/)
 
 VT100:
 - [VT100.net](https://vt100.net/)
