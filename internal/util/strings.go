@@ -52,10 +52,19 @@ func PadToRight(s string, len int) string {
 	return sb.String()
 }
 
-func LineOfHyphens(width int) string {
+func PadToLeft(s string, len int) string {
+	sb := strings.Builder{}
+	for i := len - utf8.RuneCountInString(s); i > 0; i-- {
+		sb.WriteString(" ")
+	}
+	sb.WriteString(s)
+	return sb.String()
+}
+
+func LineOf(width int, symbol string) string {
 	var sb strings.Builder
 	for k := 0; k < width; k++ {
-		sb.WriteString("-")
+		sb.WriteString(symbol)
 	}
 	return sb.String()
 }

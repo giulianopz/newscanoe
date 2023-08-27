@@ -11,6 +11,7 @@ import (
 
 	"github.com/giulianopz/newscanoe/internal/ansi"
 	"github.com/giulianopz/newscanoe/internal/app"
+	"github.com/giulianopz/newscanoe/internal/bar"
 	"github.com/giulianopz/newscanoe/internal/cache"
 	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/feed"
@@ -117,9 +118,9 @@ type display struct {
 	mu sync.Mutex
 
 	// current position of cursor
-	current *pos
+	current *Pos
 	// previous positions of cursor
-	previous []*pos
+	previous []*Pos
 
 	// size of terminal window
 	height int
@@ -154,18 +155,16 @@ type display struct {
 	currentArticleUrl string
 }
 
-type pos struct {
+type Pos struct {
 	// cursor's position within visible content window
-	cx int
-	cy int
+	cy, cx int
 
 	// offsets of rendered content window
-	startoff int
-	endoff   int
+	startoff, endoff int
 }
 
 func (d *display) trackPos() {
-	d.previous = append(d.previous, &pos{
+	d.previous = append(d.previous, &Pos{
 		cx:       d.current.cx,
 		cy:       d.current.cy,
 		startoff: d.current.startoff,
@@ -191,13 +190,13 @@ func New(debugMode bool) *display {
 
 	d := &display{
 		debugMode: debugMode,
-		current: &pos{
+		current: &Pos{
 			cx:       1,
 			cy:       1,
 			startoff: 0,
 			endoff:   0,
 		},
-		previous:           make([]*pos, 0),
+		previous:           make([]*Pos, 0),
 		ListenToKeyStrokes: true,
 		config:             &config.Config{},
 		cache:              cache.NewCache(),
@@ -353,19 +352,17 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* top bar */
 
-	fmt.Fprint(buf, ansi.SGR(ansi.REVERSE_COLOR))
-
-	// rougly, a low-resolution screen width
-	if d.width < 50 {
-		fmt.Fprint(buf, util.PadToRight(app.Name, d.width-utf8.RuneCountInString(app.Version)))
-		fmt.Fprint(buf, fmt.Sprintf("%s\r\n", app.Version))
+	topBar := bar.NewBar()
+	if d.topBarMsg != "" {
+		topBar.SetText(app.Name+" "+d.topBarMsg, app.Version)
 	} else {
-		fmt.Fprint(buf, util.PadToRight(app.Name+" "+d.topBarMsg, d.width-utf8.RuneCountInString(app.Version)))
-		fmt.Fprint(buf, fmt.Sprintf("%s\r\n", app.Version))
+		topBar.SetText(app.Name, app.Version)
 	}
-	fmt.Fprint(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	fmt.Fprint(buf, topBar.Build(d.width))
+	fmt.Fprint(buf, "\r\n")
 
-	fmt.Fprint(buf, util.LineOfHyphens(d.width)+"\r\n")
+	fmt.Fprint(buf, util.LineOf(d.width, "-"))
+	fmt.Fprint(buf, "\r\n")
 
 	/* main content */
 
@@ -418,21 +415,20 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 	/* bottom bar */
 
-	fmt.Fprint(buf, util.LineOfHyphens(d.width)+"\r\n")
+	fmt.Fprint(buf, util.LineOf(d.width, "-"))
+	fmt.Fprint(buf, "\r\n")
 
-	fmt.Fprint(buf, ansi.SGR(ansi.REVERSE_COLOR))
-
-	d.bottomRightCorner = fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered))
-	if d.debugMode {
-		d.bottomRightCorner = fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width)
-	} else if d.editingMode {
-		d.bottomRightCorner = ""
+	bottomBar := bar.NewBar()
+	switch {
+	case d.editingMode:
+		bottomBar.SetText(d.bottomBarMsg, "")
+	case d.debugMode:
+		bottomBar.SetText(d.bottomBarMsg, fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width))
+	default:
+		bottomBar.SetText(d.bottomBarMsg, fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered)))
 	}
 
-	fmt.Fprint(buf, util.PadToRight(d.bottomBarMsg, d.width-utf8.RuneCountInString(d.bottomRightCorner)))
-	fmt.Fprint(buf, d.bottomRightCorner)
-
-	fmt.Fprint(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
+	fmt.Fprint(buf, bottomBar.Build(d.width))
 }
 
 func (d *display) RefreshScreen() {
