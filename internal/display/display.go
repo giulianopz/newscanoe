@@ -140,8 +140,6 @@ type display struct {
 	topBarMsg string
 	// message displayed in the bottom bar
 	bottomBarMsg string
-	// message displayed in the right corner of the bottom bar
-	bottomRightCorner string
 
 	ListenToKeyStrokes bool
 
