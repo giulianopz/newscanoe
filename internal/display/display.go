@@ -370,9 +370,12 @@ func (d *display) draw(buf *bytes.Buffer) {
 	var printed int
 	for i := d.current.startoff; i <= d.current.endoff; i++ {
 
+		var arrow string
 		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			fmt.Fprint(buf, ansi.SGR(ansi.REVERSE_COLOR))
+			// ref: https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
+			arrow = "\u25B6"
 		}
+		fmt.Fprintf(buf, "%-2s", arrow)
 
 		row := d.rendered[i]
 
@@ -397,11 +400,6 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		fmt.Fprint(buf, ansi.WhiteFG())
 		fmt.Fprint(buf, line)
-
-		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT {
-			fmt.Fprint(buf, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
-		}
-
 		fmt.Fprint(buf, "\r\n")
 
 		printed++
