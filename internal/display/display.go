@@ -370,16 +370,21 @@ func (d *display) draw(buf *bytes.Buffer) {
 	var printed int
 	for i := d.current.startoff; i <= d.current.endoff; i++ {
 
-		var arrow string
-		if i == d.currentRow() && d.currentSection != ARTICLE_TEXT && !d.editingMode {
-			// ref: https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
-			arrow = "\u25B6"
+		var runes int
+
+		if d.currentSection != ARTICLE_TEXT && !d.editingMode {
+			var arrow string
+			if i == d.currentRow() {
+				// https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
+				arrow = "\u25B6"
+			}
+			fmt.Fprintf(buf, "%-2s", arrow)
+
+			runes += 2
 		}
-		fmt.Fprintf(buf, "%-2s", arrow)
 
 		row := d.rendered[i]
 
-		var runes int
 		for _, c := range row {
 			if c.char != NULL {
 				runes++
@@ -388,7 +393,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		if runes > d.width {
 			log.Default().Printf("current line length %d exceeds screen width: %d\n", runes, d.width)
-			row = row[:d.width]
+			row = row[:len(row)-(runes-d.width+1)]
 		}
 
 		line := stringify(row)
