@@ -118,9 +118,11 @@ type display struct {
 	mu sync.Mutex
 
 	// current position of cursor
-	current *Pos
+	current *pos
 	// previous positions of cursor
-	previous []*Pos
+	previous []*pos
+
+	hideCursor bool
 
 	// size of terminal window
 	height int
@@ -153,16 +155,15 @@ type display struct {
 	currentArticleUrl string
 }
 
-type Pos struct {
+type pos struct {
 	// cursor's position within visible content window
 	cy, cx int
-
 	// offsets of rendered content window
 	startoff, endoff int
 }
 
 func (d *display) trackPos() {
-	d.previous = append(d.previous, &Pos{
+	d.previous = append(d.previous, &pos{
 		cx:       d.current.cx,
 		cy:       d.current.cy,
 		startoff: d.current.startoff,
@@ -188,13 +189,13 @@ func New(debugMode bool) *display {
 
 	d := &display{
 		debugMode: debugMode,
-		current: &Pos{
+		current: &pos{
 			cx:       1,
 			cy:       1,
 			startoff: 0,
 			endoff:   0,
 		},
-		previous:           make([]*Pos, 0),
+		previous:           make([]*pos, 0),
 		ListenToKeyStrokes: true,
 		config:             &config.Config{},
 		cache:              cache.NewCache(),
@@ -232,14 +233,24 @@ func (d *display) setBottomMessage(msg string) {
 }
 
 func (d *display) setTmpBottomMessage(t time.Duration, msg string) {
-	previous := d.bottomBarMsg
 
-	fmt.Fprint(os.Stdout, ansi.HideCursor())
+	previousMsg := d.bottomBarMsg
 	d.setBottomMessage(msg)
+	d.hideCursor = true
 
 	go func() {
 		time.AfterFunc(t, func() {
-			d.setBottomMessage(previous)
+
+			defer func() {
+				d.setBottomMessage(previousMsg)
+				d.hideCursor = false
+			}()
+
+			fmt.Fprint(os.Stdout, ansi.MoveCursor(d.height, 1))
+			fmt.Fprint(os.Stdout, ansi.EraseToEndOfLine(ansi.ERASE_ENTIRE_LINE))
+			fmt.Fprint(os.Stdout, ansi.SGR(ansi.REVERSE_COLOR))
+			fmt.Fprint(os.Stdout, util.PadToRight(previousMsg, d.width))
+			fmt.Fprint(os.Stdout, ansi.SGR(ansi.ALL_ATTRIBUTES_OFF))
 		})
 	}()
 }
@@ -372,9 +383,9 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		var runes int
 
-		if d.currentSection != ARTICLE_TEXT && !d.editingMode {
+		if d.currentSection != ARTICLE_TEXT {
 			var arrow string
-			if i == d.currentRow() {
+			if i != d.height && i == d.currentRow() {
 				// https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
 				arrow = "\u25B6"
 			}
@@ -458,11 +469,9 @@ func (d *display) RefreshScreen() {
 
 	d.draw(buf)
 
-	if d.editingMode {
-		fmt.Fprint(buf, ansi.MoveCursor(d.height, d.current.cx))
+	fmt.Fprint(buf, ansi.MoveCursor(d.current.cy, d.current.cx))
+	if d.editingMode && !d.hideCursor {
 		fmt.Fprint(buf, ansi.ShowCursor())
-	} else {
-		fmt.Fprint(buf, ansi.MoveCursor(d.current.cy, d.current.cx))
 	}
 
 	fmt.Fprint(os.Stdout, buf.String())

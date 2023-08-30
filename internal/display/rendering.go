@@ -49,7 +49,7 @@ func (d *display) renderArticleList() {
 			}
 		}
 	} else {
-		d.setTmpBottomMessage(1*time.Second, "cannot load article list!")
+		d.setTmpBottomMessage(2*time.Second, "cannot load article list!")
 	}
 }
 

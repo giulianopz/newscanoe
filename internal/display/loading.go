@@ -53,13 +53,13 @@ func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 	parsedFeed, err := d.parser.Parse(url)
 	if err != nil {
 		log.Default().Println(err)
-		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
+		d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
 		return nil, err
 	}
 
 	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
-		d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
+		d.setTmpBottomMessage(2*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
 		return nil, err
 	}
 
@@ -112,7 +112,7 @@ func (d *display) fetchAllFeeds() {
 	}
 
 	if err := g.Wait(); err != nil {
-		d.setTmpBottomMessage(3*time.Second, "cannot reload all feeds!")
+		d.setTmpBottomMessage(2*time.Second, "cannot reload all feeds!")
 	} else {
 		go func() {
 			if err := d.cache.Encode(); err != nil {
@@ -137,7 +137,7 @@ func (d *display) loadArticleList(url string) error {
 			found = true
 
 			if len(cachedFeed.Items) == 0 {
-				d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
+				d.setTmpBottomMessage(2*time.Second, "feed not yet loaded: press r!")
 				return fmt.Errorf("feed not loaded")
 			}
 
@@ -173,7 +173,7 @@ func (d *display) loadArticleList(url string) error {
 		}
 	}
 	if !found {
-		d.setTmpBottomMessage(3*time.Second, "feed not yet loaded: press r!")
+		d.setTmpBottomMessage(2*time.Second, "feed not yet loaded: press r!")
 		return fmt.Errorf("cannot find articles of feed with url: %s", url)
 	}
 	return nil
@@ -195,7 +195,7 @@ func (d *display) loadArticleText(url string) error {
 					text, err := html.ExtractText(i.Url)
 					if err != nil {
 						log.Default().Println(err)
-						d.setTmpBottomMessage(3*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
+						d.setTmpBottomMessage(2*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
 						return fmt.Errorf("cannot load aricle")
 					}
 
@@ -239,7 +239,7 @@ func (d *display) addNewFeed() {
 
 	for _, f := range d.config.Feeds {
 		if f.Url == url {
-			d.setTmpBottomMessage(3*time.Second, "already added!")
+			d.setTmpBottomMessage(2*time.Second, "already added!")
 			return
 		}
 	}
@@ -247,19 +247,18 @@ func (d *display) addNewFeed() {
 	parsedFeed, err := d.fetchFeed(url)
 	if err != nil {
 		log.Default().Println(err)
-		d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
 		return
 	}
 
 	if err := d.config.AddFeed(parsedFeed, url); err != nil {
 		log.Default().Println(err)
-		d.setTmpBottomMessage(3*time.Second, "cannot add new feed to config!")
+		d.setTmpBottomMessage(2*time.Second, "cannot add new feed to config!")
 		return
 	}
 
 	if err := d.config.Encode(); err != nil {
 		log.Default().Println(err)
-		d.setTmpBottomMessage(3*time.Second, "cannot write new feed to config!")
+		d.setTmpBottomMessage(2*time.Second, "cannot write new feed to config!")
 		return
 	}
 
@@ -270,6 +269,6 @@ func (d *display) addNewFeed() {
 	d.current.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
 
 	d.setBottomMessage(urlsListSectionMsg)
-	d.setTmpBottomMessage(3*time.Second, "new feed saved!")
+	d.setTmpBottomMessage(2*time.Second, "new feed saved!")
 	d.exitEditingMode()
 }

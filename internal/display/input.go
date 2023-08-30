@@ -145,7 +145,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		if d.currentSection == URLS_LIST {
 			if _, err := d.fetchFeed(string(d.raw[d.currentRow()])); err != nil {
 				log.Default().Println(err)
-				d.setTmpBottomMessage(3*time.Second, "cannot parse feed!")
+				d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
 				return
 			}
 		}
@@ -164,7 +164,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		if d.currentSection == ARTICLES_LIST {
 			if !util.IsHeadless() {
 				if err := util.OpenWithBrowser(string(d.raw[d.currentRow()])); err != nil {
-					d.setTmpBottomMessage(1*time.Second, err.Error())
+					d.setTmpBottomMessage(2*time.Second, err.Error())
 				}
 			}
 		}
@@ -173,7 +173,7 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 		if d.currentSection == ARTICLES_LIST {
 			if util.IsLynxPresent() {
 				if err := util.OpenWithLynx(string(d.raw[d.currentRow()])); err != nil {
-					d.setTmpBottomMessage(1*time.Second, err.Error())
+					d.setTmpBottomMessage(2*time.Second, err.Error())
 				}
 			}
 		}
@@ -303,7 +303,7 @@ func (d *display) whileEditing(input byte) {
 	case input == QUIT:
 		{
 			d.setBottomMessage(urlsListSectionMsg)
-			d.setTmpBottomMessage(1*time.Second, "editing aborted!")
+			d.setTmpBottomMessage(2*time.Second, "editing aborted!")
 			d.exitEditingMode()
 			d.resetCurrentPos()
 		}
