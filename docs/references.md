@@ -17,7 +17,8 @@ ANSI:
 
 TUI:
 - [Want to create a TUI application? - The Basics of "Uncooked" Terminal IO](https://zig.news/lhp/want-to-create-a-tui-application-the-basics-of-uncooked-terminal-io-17gm)
-- [A new way of drawing boxes in the terminal (possibly)](https://www.willmcgugan.com/blog/tech/post/ceo-just-wants-to-draw-boxes/)
+- [A new way of drawing boxes in the terminal (possibly)](https://news.ycombinator.com/item?id=33216626)
+- [Javascript Box Drawing Demo](http://marklodato.github.io/js-boxdrawing/)
 
 VT100:
 - [VT100.net](https://vt100.net/)
