@@ -455,18 +455,6 @@ func (d *display) RefreshScreen() {
 	fmt.Fprint(buf, ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
 	fmt.Fprint(buf, ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
 
-	switch d.currentSection {
-
-	case URLS_LIST:
-		d.renderFeedList()
-
-	case ARTICLES_LIST:
-		d.renderArticleList()
-
-	case ARTICLE_TEXT:
-		d.renderArticleText()
-	}
-
 	d.draw(buf)
 
 	fmt.Fprint(buf, ansi.MoveCursor(d.current.cy, d.current.cx))
