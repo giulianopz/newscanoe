@@ -3,6 +3,7 @@ package bar
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/giulianopz/newscanoe/internal/ansi"
@@ -17,9 +18,11 @@ func NewBar() *Bar {
 	return &Bar{}
 }
 
+var sanitizer = strings.NewReplacer("\n", "", "\r", "")
+
 func (bb *Bar) SetText(l, r string) {
-	bb.leftText = l
-	bb.rightText = r
+	bb.leftText = sanitizer.Replace(l)
+	bb.rightText = sanitizer.Replace(r)
 }
 
 func (bb *Bar) Build(width int) string {
