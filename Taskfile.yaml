@@ -30,3 +30,7 @@ tasks:
   clean:
     cmds:
       - rm ~/.cache/newscanoe/feeds.gob
+
+  tag:
+    cmds:
+      - git tag -a {{.CLI_ARGS}} -m "Releasing version {{.CLI_ARGS}}"
