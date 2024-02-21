@@ -262,11 +262,33 @@ func (d *display) addNewFeed() {
 		return
 	}
 
+	d.cache.Merge(d.config)
+
 	d.appendToRaw(url)
 
+	d.resetRows()
+
+	sort.SliceStable(d.config.Feeds, func(i, j int) bool {
+		return strings.ToLower(d.config.Feeds[i].Name) < strings.ToLower(d.config.Feeds[j].Name)
+	})
+	for _, f := range d.config.Feeds {
+		d.appendToRaw(f.Url)
+	}
+
+	d.renderFeedList()
+
+	idx := d.indexOf(url)
+	if idx == -1 {
+		log.Default().Println("cannot find url:", url)
+		d.setTmpBottomMessage(2*time.Second, "cannot find the find you added!")
+		return
+	}
+	idx++
+
 	d.current.cx = 1
-	d.current.cy = len(d.raw) % d.getContentWindowLen()
-	d.current.startoff = (len(d.raw) - 1) / d.getContentWindowLen() * d.getContentWindowLen()
+	max := d.getContentWindowLen()
+	d.current.cy = idx % max
+	d.current.startoff = idx / max * max
 
 	d.setBottomMessage(urlsListSectionMsg)
 	d.setTmpBottomMessage(2*time.Second, "new feed saved!")

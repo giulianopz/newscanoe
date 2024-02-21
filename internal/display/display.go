@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -285,6 +287,18 @@ func (d *display) Quit(quitC chan bool) {
 
 func (d *display) appendToRaw(s string) {
 	d.raw = append(d.raw, []byte(s))
+}
+
+func (d *display) indexOf(url string) int {
+	sort.SliceStable(d.config.Feeds, func(i, j int) bool {
+		return strings.ToLower(d.config.Feeds[i].Name) < strings.ToLower(d.config.Feeds[j].Name)
+	})
+	for idx, f := range d.config.Feeds {
+		if f.Url == url {
+			return idx
+		}
+	}
+	return -1
 }
 
 func (d *display) appendToRendered(cells []*cell) {
