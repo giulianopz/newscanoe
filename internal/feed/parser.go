@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ func (p *Parser) Parse(url string) (*Feed, error) {
 	defer cancel()
 	parsedFeed, err := p.ParseURLWithContext(url, ctx)
 	if err != nil {
+		slog.Error("cannot parse feed", "url", url, "err", err)
 		return nil, err
 	}
 	return NewFeedFrom(parsedFeed, url), nil

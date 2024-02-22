@@ -143,25 +143,26 @@ func (d *display) whileReading(input byte, quitC chan bool) {
 
 	case 'r':
 		if d.currentSection == URLS_LIST {
-			f, err := d.fetchFeed(string(d.raw[d.currentRow()]))
+			parsedFeed, err := d.fetchFeed(string(d.raw[d.currentRow()]))
 			if err != nil {
 				log.Default().Println(err)
 				d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
 				return
 			}
-			f.CountUnread()
+			parsedFeed.CountUnread()
 			// TODO rewrite single line with d.writeLineAt
-			d.rendered[d.currentRow()] = fromString(util.RenderFeedRow(f.UnreadCount, len(f.Items), f.Name))
-		}
-
-	case 'a':
-		if d.currentSection == URLS_LIST {
-			d.enterEditingMode()
+			d.rendered[d.currentRow()] = fromString(util.RenderFeedRow(parsedFeed.UnreadCount, len(parsedFeed.Items), parsedFeed.Name))
 		}
 
 	case 'R':
 		if d.currentSection == URLS_LIST {
 			d.fetchAllFeeds()
+			d.renderFeedList()
+		}
+
+	case 'a':
+		if d.currentSection == URLS_LIST {
+			d.enterEditingMode()
 		}
 
 	case 'o':

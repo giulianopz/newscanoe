@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -68,6 +69,7 @@ func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 			log.Default().Println(err.Error())
 		}
 	}()
+
 	return parsedFeed, nil
 }
 
@@ -112,16 +114,18 @@ func (d *display) fetchAllFeeds() {
 	}
 
 	if err := g.Wait(); err != nil {
+		slog.Error("reload failed", "err", err)
 		d.setTmpBottomMessage(2*time.Second, "cannot reload all feeds!")
-	} else {
-		go func() {
-			if err := d.cache.Encode(); err != nil {
-				log.Default().Println(err.Error())
-			}
-		}()
-
-		log.Default().Println("reloaded all feeds in: ", time.Since(start))
+		return
 	}
+
+	go func() {
+		if err := d.cache.Encode(); err != nil {
+			log.Default().Println(err.Error())
+		}
+	}()
+
+	log.Default().Println("reloaded all feeds in: ", time.Since(start))
 }
 
 func (d *display) loadArticleList(url string) error {
