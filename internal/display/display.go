@@ -426,6 +426,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 			log.Default().Println("found empty row")
 			line = " "
 		}
+
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
 		fmt.Fprint(buf, ansi.WhiteFG())
