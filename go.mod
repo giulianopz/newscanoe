@@ -1,6 +1,6 @@
 module github.com/giulianopz/newscanoe
 
-go 1.21
+go 1.22.0
 
 require (
 	github.com/giulianopz/go-readability v0.0.0-20230808074302-a1add4325569
