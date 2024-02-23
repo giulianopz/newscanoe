@@ -10,10 +10,10 @@ import (
 )
 
 type Feed struct {
-	Name        string  `yaml:"name"`
-	Url         string  `yaml:"url"`
-	Items       []*Item `yaml:"-"`
-	UnreadCount int     `yaml:"-"`
+	Name        string
+	Url         string
+	Items       []*Item
+	UnreadCount int
 }
 
 func NewFeed(name string) *Feed {
@@ -25,6 +25,7 @@ func NewFeed(name string) *Feed {
 
 func NewFeedFrom(parsedFeed *gofeed.Feed, url string) *Feed {
 	title := strings.TrimSpace(parsedFeed.Title)
+
 	f := NewFeed(title).WithUrl(url)
 
 	for _, parsedItem := range parsedFeed.Items {

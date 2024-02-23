@@ -9,7 +9,7 @@ A tool for all of you information junkies, as simple as you always secretly desi
 
 ### Configuration
 
-A single YAML file (`config.yaml`) is used to configure the app: it consists of a list of feeds with a name and a url (see the [urls sample file](./assets/config.yaml)) and it is located in the directory `$XDG_CONFIG_HOME/newscanoe` (or `$HOME/.config/newscanoe`).
+A plain text file (named as `config`) is used to configure the app: it consists of a list of feed urls with a name preceded by a pound sign (`#`) (see the [example file](./assets/config) in this repo) and it is located in the directory `$XDG_CONFIG_HOME/newscanoe` (or `$HOME/.config/newscanoe`).
 
 If such file does not already exist, it will be created at the first execution of the app and you will be prompted to manually insert a url by typing `a`. 
 You can then edit such file with any text editor (`vi` is the default, unless `EDITOR` environment variable is set) by running: `newscanoe -e`. 
