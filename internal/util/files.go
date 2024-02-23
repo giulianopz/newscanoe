@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	configFileName = "config.yaml"
+	configFileName = "config"
 	cacheFileName  = "feeds.gob"
 )
 
