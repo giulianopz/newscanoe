@@ -135,7 +135,7 @@ type display struct {
 	// display rendered text
 	rendered [][]*cell
 
-	// YAML config
+	// config
 	config *config.Config
 	// gob cache
 	cache *cache.Cache

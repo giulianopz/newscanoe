@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/giulianopz/newscanoe/internal/app"
 )
@@ -69,12 +68,12 @@ func Exists(path string) bool {
 	}
 }
 
-func StripComments(bs []byte) []byte {
+func RemoveLines(bs []byte, discard func(string) bool) []byte {
 	buf := bytes.Buffer{}
 	s := bufio.NewScanner(bytes.NewReader(bs))
 	for s.Scan() {
 		line := s.Text()
-		if !strings.HasPrefix(line, "#") {
+		if !discard(line) {
 			buf.WriteString(line + "\n")
 		}
 	}
