@@ -55,14 +55,14 @@ func (c *Config) Decode(filePath string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	f, err := os.Open(filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 
 	c.Feeds = make([]*feed.Feed, 0)
 
-	s := bufio.NewScanner(f)
+	s := bufio.NewScanner(file)
 	for s.Scan() {
 
 		f := &feed.Feed{}

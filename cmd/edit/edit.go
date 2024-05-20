@@ -1,15 +1,21 @@
 package edit
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"regexp"
+	"strings"
 
-	"github.com/giulianopz/newscanoe/internal/config"
 	"github.com/giulianopz/newscanoe/internal/util"
-	"gopkg.in/yaml.v3"
 )
+
+var linePattern = regexp.MustCompile(`http[^"]+((\s#"[^"]+")+)`)
+
+const errMsg = "# the following line does not respect the pattern"
 
 func EditConfigFile() error {
 
@@ -25,12 +31,7 @@ func EditConfigFile() error {
 		editorName = defaultEditorName
 	}
 
-	var retries int = 3
-
-	for retries != 0 {
-
-		retries--
-
+	for retries := 3; retries > 0; retries-- {
 		editor := exec.Command(editorName, configFilePath)
 		editor.Stdout = os.Stdout
 		editor.Stderr = os.Stderr
@@ -44,30 +45,51 @@ func EditConfigFile() error {
 			return err
 		}
 
-		bs, err := os.ReadFile(configFilePath)
+		f, err := os.OpenFile(configFilePath, os.O_RDWR|os.O_CREATE, 0755)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		bs, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}
 
-		if err := yaml.Unmarshal(bs, &config.Config{}); err != nil {
+		fileIsValid := true
+		buf := bytes.Buffer{}
 
-			buf := bytes.Buffer{}
-			buf.WriteString("# " + err.Error() + "\n")
-			buf.Write(util.StripComments(bs))
-			if err := os.WriteFile(configFilePath, buf.Bytes(), os.ModePerm); err != nil {
-				return err
+		s := bufio.NewScanner(bytes.NewReader(bs))
+		for s.Scan() {
+			line := s.Text()
+			if !linePattern.MatchString(line) && !strings.HasPrefix(line, "#") {
+				fileIsValid = false
+				if _, err := buf.WriteString(fmt.Sprintf("%s: %s\n", errMsg, line)); err != nil {
+					return err
+				}
+				break
 			}
-		} else {
+		}
+		if err := s.Err(); err != nil {
+			return err
+		}
 
-			if err := os.WriteFile(configFilePath, util.StripComments(bs), os.ModePerm); err != nil {
-				return err
-			}
+		if _, err := buf.Write(util.RemoveLines(bs, func(s string) bool {
+			return strings.HasPrefix(s, errMsg)
+		})); err != nil {
+			return err
+		}
+		if err := os.WriteFile(configFilePath, buf.Bytes(), os.ModePerm); err != nil {
+			return err
+		}
+
+		if fileIsValid {
 			break
 		}
-	}
 
-	if retries == 0 {
-		return fmt.Errorf("max retries exceeded!")
+		if retries == 0 {
+			return fmt.Errorf("max retries exceeded")
+		}
 	}
 
 	return nil
