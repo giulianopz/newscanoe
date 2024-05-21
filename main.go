@@ -7,9 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/giulianopz/newscanoe/cmd/edit"
 	"github.com/giulianopz/newscanoe/cmd/newscanoe"
-	"github.com/giulianopz/newscanoe/cmd/remove"
 )
 
 var (
@@ -45,9 +43,9 @@ func main() {
 	var err error
 
 	if editFlag {
-		err = edit.EditConfigFile()
+		err = newscanoe.EditConfigFile()
 	} else if removeCacheFlag {
-		err = remove.RemoveCacheFile()
+		err = newscanoe.RemoveCacheFile()
 	} else {
 		newscanoe.Run(debugFlag)
 	}

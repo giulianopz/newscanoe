@@ -1,4 +1,4 @@
-package remove
+package newscanoe
 
 import (
 	"os"
