@@ -35,7 +35,9 @@ Supported key bindings:
 Build from source:
 ```bash
 :~$ git clone https://github.com/giulianopz/newscanoe.git
-:~$ go build -o newscanoe cmd/newscanoe/main.go && cp ./newscanoe /usr/local/bin
+:~$ cd newscanoe 
+:~/newscanoe$ go generate ./... && go build
+:~/newscanoe$ cp ./newscanoe /usr/local/bin
 ```
 
 Or download the latest pre-compiled binary from [GitHub](https://github.com/giulianopz/newscanoe/releases) and then install it into your PATH.
