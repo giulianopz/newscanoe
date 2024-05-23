@@ -24,7 +24,7 @@ const (
 	QUIT
 )
 
-func readKeyStroke(fd uintptr) byte {
+func (d *display) ReadKeyStroke(fd uintptr) byte {
 
 	input := make([]byte, 1)
 	for {
@@ -125,21 +125,19 @@ func readKeyStroke(fd uintptr) byte {
 	}
 }
 
-func (d *display) ProcessKeyStroke(fd uintptr, quitC chan bool) {
-
-	input := readKeyStroke(fd)
+func (d *display) ProcessKeyStroke(input byte) {
 	if d.editingMode {
 		d.whileEditing(input)
 	} else {
-		d.whileReading(input, quitC)
+		d.whileReading(input)
 	}
 }
 
-func (d *display) whileReading(input byte, quitC chan bool) {
+func (d *display) whileReading(input byte) {
 	switch input {
 
 	case ctrlPlus('q'), 'q':
-		d.Quit(quitC)
+		d.QuitC <- true
 
 	case 'r':
 		if d.currentSection == URLS_LIST {

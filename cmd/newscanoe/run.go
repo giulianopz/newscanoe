@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	quitC = make(chan bool)
-	sigC  = make(chan os.Signal, 1)
+	sigC = make(chan os.Signal, 1)
 
 	signals = []os.Signal{
 		syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGWINCH,
@@ -50,37 +49,39 @@ func Run(debugMode bool) {
 
 	go func() {
 		for {
-			s := <-sigC
-			if s == syscall.SIGWINCH {
+			sig := <-sigC
+			if sig == syscall.SIGWINCH {
 				w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
 				if err != nil {
 					log.Default().Printf("cannot reset window size: %v\n", err)
+				} else {
+					d.SetWindowSize(w, h)
+					d.RefreshScreen()
 				}
-				d.SetWindowSize(w, h)
-
-				d.RefreshScreen()
 			} else {
-				d.Quit(quitC)
+				d.QuitC <- true
 			}
 		}
 	}()
 
-	go func() {
+	fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
+	fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
 
-		defer func() {
-			if r := recover(); r != nil {
-				log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
-			}
-		}()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
+		}
+	}()
 
-		fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
-		fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
-
-		for d.ListenToKeyStrokes {
+	for {
+		select {
+		default:
 			d.RefreshScreen()
-			d.ProcessKeyStroke(os.Stdin.Fd(), quitC)
+			input := d.ReadKeyStroke(os.Stdin.Fd())
+			d.ProcessKeyStroke(input)
+		case <-d.QuitC:
+			d.Clear()
+			return
 		}
-	}()
-
-	<-quitC
+	}
 }

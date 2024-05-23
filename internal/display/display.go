@@ -117,6 +117,8 @@ enclosed by two bars displaying some navigation context to the user
 type display struct {
 	debugMode bool
 
+	QuitC chan bool
+
 	mu sync.Mutex
 
 	// current position of cursor
@@ -144,8 +146,6 @@ type display struct {
 	topBarMsg string
 	// message displayed in the bottom bar
 	bottomBarMsg string
-
-	ListenToKeyStrokes bool
 
 	parser *feed.Parser
 
@@ -191,17 +191,17 @@ func New(debugMode bool) *display {
 
 	d := &display{
 		debugMode: debugMode,
+		QuitC:     make(chan bool, 1),
 		current: &pos{
 			cx:       1,
 			cy:       1,
 			startoff: 0,
 			endoff:   0,
 		},
-		previous:           make([]*pos, 0),
-		ListenToKeyStrokes: true,
-		config:             &config.Config{},
-		cache:              cache.NewCache(),
-		parser:             feed.NewParser(),
+		previous: make([]*pos, 0),
+		config:   &config.Config{},
+		cache:    cache.NewCache(),
+		parser:   feed.NewParser(),
 	}
 	return d
 }
@@ -263,26 +263,19 @@ func (d *display) SetWindowSize(w, h int) {
 	d.height = h
 }
 
-func (d *display) Quit(quitC chan bool) {
-
-	log.Default().Println("quitting")
-
-	d.ListenToKeyStrokes = false
-
-	// this is just what 'clear' does:
-	// $ clear  | od -c
-	// 0000000 033   [   H 033   [   2   J 033   [   3   J
-	// 0000013
-	// ref: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
-
+// Clear does what clear(1) does:
+// $ clear  | od -c
+// 0000000 033   [   H 033   [   2   J 033   [   3   J
+// 0000013
+// ref: https://superuser.com/questions/1667569/how-can-i-make-clear-preserve-entire-scrollback-buffer
+// Then it restores the terminal's previous settings
+func (d *display) Clear() {
+	log.Default().Println("clearing screen")
 	fmt.Fprint(os.Stdout, ansi.ShowCursor())
 	fmt.Fprint(os.Stdout, ansi.MoveCursor(1, 1))
 	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(ansi.ERASE_ENTIRE_SCREEN))
 	fmt.Fprint(os.Stdout, ansi.EraseToEndOfScreen(xterm.CLEAR_SCROLLBACK_BUFFER))
-
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
-
-	quitC <- true
 }
 
 func (d *display) appendToRaw(s string) {
