@@ -29,6 +29,7 @@ func Run(debugMode bool) {
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
 	d := display.New(debugMode)
+
 	w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
 	if err != nil {
 		log.Panicln(err)
@@ -49,16 +50,18 @@ func Run(debugMode bool) {
 
 	go func() {
 		for {
-			sig := <-sigC
-			if sig == syscall.SIGWINCH {
-				w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
-				if err != nil {
-					log.Default().Printf("cannot reset window size: %v\n", err)
-				} else {
-					d.SetWindowSize(w, h)
-					d.RefreshScreen()
+			switch <-sigC {
+			case syscall.SIGWINCH:
+				{
+					w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
+					if err != nil {
+						log.Default().Printf("cannot reset window size: %v\n", err)
+					} else {
+						d.SetWindowSize(w, h)
+						d.RefreshScreen()
+					}
 				}
-			} else {
+			default:
 				d.QuitC <- true
 			}
 		}

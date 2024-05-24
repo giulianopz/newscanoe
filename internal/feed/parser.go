@@ -224,7 +224,7 @@ func (t *translator) jsonItemPublishedParsed(jsonItem *json.Item) *time.Time {
 // common
 
 func firstEntry(entries []string) string {
-	if entries != nil {
+	if entries == nil {
 		return ""
 	}
 	return entries[0]
