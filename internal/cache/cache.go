@@ -107,8 +107,7 @@ func (cache *Cache) Merge(conf *config.Config) {
 	for _, configuredFeed := range conf.Feeds {
 
 		var cachedFeed *feed.Feed
-
-		found := slices.ContainsFunc[*feed.Feed](cache.feeds, func(f *feed.Feed) bool {
+		found := slices.ContainsFunc(cache.feeds, func(f *feed.Feed) bool {
 			if f.Url == configuredFeed.Url {
 				cachedFeed = f
 				return true
