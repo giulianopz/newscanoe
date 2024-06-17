@@ -76,30 +76,26 @@ func (c *Cache) Decode(filePath string) error {
 	return nil
 }
 
-func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) error {
+func (c *Cache) AddFeed(parsedFeed *feed.Feed, url string) *feed.Feed {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	for _, cachedFeed := range c.feeds {
-
 		if cachedFeed.Url == url {
-
 			for _, parsedItem := range parsedFeed.Items {
-
 				if !cachedFeed.HasItem(parsedItem.Title) {
 					cachedFeed.Items = append(cachedFeed.Items, parsedItem)
 				}
 			}
 			log.Default().Printf("refreshed cached feed with url: %s\n", url)
-			return nil
+			return cachedFeed
 		}
 	}
 
 	c.feeds = append(c.feeds, parsedFeed)
 	log.Default().Printf("cached a new feed with url: %s\n", url)
-
-	return nil
+	return parsedFeed
 }
 
 func (cache *Cache) Merge(conf *config.Config) {

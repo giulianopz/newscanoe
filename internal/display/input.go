@@ -147,6 +147,7 @@ func (d *display) whileReading(input byte) {
 				d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
 				return
 			}
+
 			parsedFeed.CountUnread()
 			// TODO rewrite single line with d.writeLineAt
 			d.rendered[d.currentRow()] = fromString(util.RenderFeedRow(parsedFeed.UnreadCount, len(parsedFeed.Items), parsedFeed.Name))

@@ -58,11 +58,7 @@ func (d *display) fetchFeed(url string) (*feed.Feed, error) {
 		return nil, err
 	}
 
-	if err := d.cache.AddFeed(parsedFeed, url); err != nil {
-		log.Default().Println(err)
-		d.setTmpBottomMessage(2*time.Second, fmt.Sprintf("cannot load feed from url: %s", url))
-		return nil, err
-	}
+	parsedFeed = d.cache.AddFeed(parsedFeed, url)
 
 	go func() {
 		if err := d.cache.Encode(); err != nil {
@@ -100,10 +96,7 @@ func (d *display) fetchAllFeeds() {
 				return err
 			}
 
-			if err := d.cache.AddFeed(parsedFeed, string(url)); err != nil {
-				log.Default().Println(err)
-				return err
-			}
+			parsedFeed = d.cache.AddFeed(parsedFeed, string(url))
 
 			pb.IncrByOne()
 
