@@ -96,7 +96,7 @@ func (d *display) fetchAllFeeds() {
 				return err
 			}
 
-			parsedFeed = d.cache.AddFeed(parsedFeed, string(url))
+			d.cache.AddFeed(parsedFeed, string(url))
 
 			pb.IncrByOne()
 
