@@ -70,18 +70,22 @@ func Run(debugMode bool) {
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
 	fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
 
-	defer func() {
-		if r := recover(); r != nil {
-			log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
-		}
-	}()
-
 	for {
 		select {
 		default:
-			d.RefreshScreen()
-			input := d.ReadKeyStroke(os.Stdin.Fd())
-			d.ProcessKeyStroke(input)
+
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
+					}
+				}()
+
+				d.RefreshScreen()
+				input := d.ReadKeyStroke(os.Stdin.Fd())
+				d.ProcessKeyStroke(input)
+			}()
+
 		case <-d.QuitC:
 			d.Clear()
 			return
