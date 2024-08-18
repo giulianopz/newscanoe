@@ -5,9 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"syscall"
-	"time"
 
 	"github.com/giulianopz/newscanoe/internal/display"
 	"github.com/giulianopz/newscanoe/internal/termios"
@@ -30,6 +28,7 @@ func Run(debugMode bool) {
 	defer termios.DisableRawMode(os.Stdin.Fd(), origTermios)
 
 	d := display.New(debugMode)
+	defer d.Clear()
 
 	w, h, err := termios.GetWindowSize(int(os.Stdin.Fd()))
 	if err != nil {
@@ -71,27 +70,7 @@ func Run(debugMode bool) {
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_MOUSE_TRACKING)
 	fmt.Fprintf(os.Stdout, xterm.ENABLE_BRACKETED_PASTE)
 
-	for {
-		select {
+	go d.ListenToInput()
 
-		default:
-
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
-						d.SetTmpBottomMessage(2*time.Second, "something bad happened: check the logs")
-					}
-				}()
-
-				d.RefreshScreen()
-				input := d.ReadKeyStroke(os.Stdin.Fd())
-				d.ProcessKeyStroke(input)
-			}()
-
-		case <-d.QuitC:
-			d.Clear()
-			return
-		}
-	}
+	<-d.QuitC
 }
