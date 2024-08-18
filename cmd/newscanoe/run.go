@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"syscall"
+	"time"
 
 	"github.com/giulianopz/newscanoe/internal/display"
 	"github.com/giulianopz/newscanoe/internal/termios"
@@ -72,12 +73,14 @@ func Run(debugMode bool) {
 
 	for {
 		select {
+
 		default:
 
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
 						log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
+						d.SetTmpBottomMessage(2*time.Second, "something bad happened: check the logs")
 					}
 				}()
 
