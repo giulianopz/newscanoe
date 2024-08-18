@@ -168,7 +168,8 @@ func (d *display) whileReading(input byte) {
 		if d.currentSection == ARTICLES_LIST {
 			if !util.IsHeadless() {
 				if err := util.OpenWithBrowser(string(d.raw[d.currentRow()])); err != nil {
-					d.setTmpBottomMessage(2*time.Second, err.Error())
+					log.Default().Println("cannot open url with browser", err)
+					d.setTmpBottomMessage(2*time.Second, "cannot open url with browser: check logs")
 				}
 			}
 		}
@@ -177,7 +178,8 @@ func (d *display) whileReading(input byte) {
 		if d.currentSection == ARTICLES_LIST {
 			if util.IsLynxPresent() {
 				if err := util.OpenWithLynx(string(d.raw[d.currentRow()])); err != nil {
-					d.setTmpBottomMessage(2*time.Second, err.Error())
+					log.Default().Println("cannot open url with lynx", err)
+					d.setTmpBottomMessage(2*time.Second, "cannot open url with lynx: check logs")
 				}
 			}
 		}

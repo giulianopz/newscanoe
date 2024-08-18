@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -471,4 +472,21 @@ func (d *display) RefreshScreen() {
 	}
 
 	fmt.Fprint(os.Stdout, buf.String())
+}
+
+func (d *display) ListenToInput() {
+	for {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Default().Printf("recover from: %v\nstack trace: %v\n", r, string(debug.Stack()))
+					d.setTmpBottomMessage(2*time.Second, "something bad happened: check the logs")
+				}
+			}()
+
+			d.RefreshScreen()
+			input := d.ReadKeyStroke(os.Stdin.Fd())
+			d.ProcessKeyStroke(input)
+		}()
+	}
 }

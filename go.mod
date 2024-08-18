@@ -3,7 +3,7 @@ module github.com/giulianopz/newscanoe
 go 1.22.3
 
 require (
-	github.com/giulianopz/go-readability v0.1.0
+	github.com/giulianopz/go-readability v0.1.1
 	github.com/mmcdole/gofeed v1.2.1
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/sync v0.1.0
