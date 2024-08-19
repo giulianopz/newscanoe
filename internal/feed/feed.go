@@ -57,11 +57,16 @@ func (f *Feed) CountUnread() {
 
 func (f *Feed) GetItemsOrderedByDate() []*Item {
 
-	slices.SortFunc(f.Items, func(a, b *Item) bool {
+	slices.SortFunc(f.Items, func(a, b *Item) int {
 		if a.PubDate == util.NoPubDate || b.PubDate == util.NoPubDate {
-			return strings.Compare(a.Title, b.Title) <= -1
+			return strings.Compare(a.Title, b.Title)
 		}
-		return a.PubDate.After(b.PubDate)
+		if a.PubDate.Before(b.PubDate) {
+			return 1
+		} else if a.PubDate.After(b.PubDate) {
+			return -1
+		}
+		return 0
 	})
 
 	return f.Items
