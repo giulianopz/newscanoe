@@ -222,7 +222,7 @@ func (d *display) loadArticleText(url string) error {
 						}
 					}()
 
-					break
+					return nil
 				}
 			}
 		}
