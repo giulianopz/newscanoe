@@ -44,64 +44,10 @@ const (
 	articleTextSectionMsg  = "HELP: \u232B = go back |  \u25B2 = scroll up | \u25BC = scroll down"
 )
 
-type cell struct {
-	char   rune
-	params []int
-}
-
-func newCell(c rune) *cell {
-	return &cell{
-		char: c,
-	}
-}
-
-func fromString(s string) []*cell {
-	cells := make([]*cell, 0)
-	for _, r := range s {
-		cells = append(cells, newCell(r))
-	}
-	return cells
-}
-
-func fromStringWithStyle(s string, params ...int) []*cell {
-	cells := make([]*cell, 0)
-	for _, r := range s {
-		cells = append(cells, newCell(r).withStyle(params...))
-	}
-	if len(cells) != 0 {
-		cells = append([]*cell{newCell(NULL).withStyle(params...)}, cells...)
-		cells = append(cells, newCell(NULL).withStyle(ansi.ALL_ATTRIBUTES_OFF))
-	}
-	return cells
-}
-
-func (c *cell) withStyle(a ...int) *cell {
-	c.params = append(make([]int, 0), a...)
-	return c
-}
-
-func (c cell) String() string {
-	if len(c.params) == 0 {
-		return string(c.char)
-	}
-	if c.char == NULL {
-		return ansi.SGR(c.params...)
-	}
-	return ansi.SGR(c.params...) + string(c.char)
-}
-
-func stringify(cells []*cell) string {
-	var ret string
-	for _, c := range cells {
-		ret += c.String()
-	}
-	return ret
-}
-
 /*
 display is the core struct handling the whole state of the application:
 it draws the UI handling the displayed textual content as a window
-which slides over a 2-dimensional array (raw and rendered)
+which slides over a 2-dimensional array
 enclosed by two bars displaying some navigation context to the user
 ----------------
 |   top-bar    |
@@ -118,7 +64,7 @@ enclosed by two bars displaying some navigation context to the user
 type display struct {
 	debugMode bool
 
-	QuitC chan bool
+	QuitC chan struct{}
 
 	mu sync.Mutex
 
@@ -133,10 +79,8 @@ type display struct {
 	height int
 	width  int
 
-	// display raw text
-	raw [][]byte
-	// display rendered text
-	rendered [][]*cell
+	// textual context to display
+	rows [][]*cell
 
 	// config
 	config *config.Config
@@ -156,6 +100,36 @@ type display struct {
 	currentSection    int
 	currentFeedUrl    string
 	currentArticleUrl string
+}
+
+const (
+	txt = iota
+	img
+)
+
+// a cell is the smallest unit on the screen
+// it contains a text character or a sixel
+// for sixels, read: https://vt100.net/docs/vt3xx-gp/chapter14.html
+type cell struct {
+	ct    uint
+	char  rune
+	sixel byte
+}
+
+func textcell(r rune) *cell {
+	return &cell{ct: txt, char: r}
+}
+
+func textcells(s string) []*cell {
+	cells := make([]*cell, 0)
+	for _, r := range s {
+		cells = append(cells, textcell(r))
+	}
+	return cells
+}
+
+func sixelcell(s byte) *cell {
+	return &cell{ct: img, sixel: s}
 }
 
 type pos struct {
@@ -189,10 +163,9 @@ func (d *display) restorePos() {
 }
 
 func New(debugMode bool) *display {
-
 	d := &display{
 		debugMode: debugMode,
-		QuitC:     make(chan bool, 1),
+		QuitC:     make(chan struct{}, 1),
 		current: &pos{
 			cx:       1,
 			cy:       1,
@@ -209,8 +182,8 @@ func New(debugMode bool) *display {
 
 func (d *display) setMaxEndOff() {
 	d.current.endoff = d.current.startoff + d.getContentWindowLen() - 1
-	if d.current.endoff > (len(d.rendered) - 1) {
-		d.current.endoff = (len(d.rendered) - 1)
+	if d.current.endoff > (len(d.rows) - 1) {
+		d.current.endoff = (len(d.rows) - 1)
 	}
 
 	if !d.editingMode {
@@ -279,8 +252,12 @@ func (d *display) Clear() {
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 }
 
-func (d *display) appendToRaw(s string) {
-	d.raw = append(d.raw, []byte(s))
+func (d *display) appendRow(s string) {
+	row := make([]*cell, 0)
+	for _, r := range s {
+		row = append(row, textcell(r))
+	}
+	d.rows = append(d.rows, row)
 }
 
 func (d *display) indexOf(url string) int {
@@ -295,16 +272,10 @@ func (d *display) indexOf(url string) int {
 	return -1
 }
 
-func (d *display) appendToRendered(cells []*cell) {
-	d.rendered = append(d.rendered, cells)
-}
+// TODO explain screen index vs vector index
 
-func (d *display) currentRow() int {
+func (d *display) currentArrIdx() int {
 	return d.current.cy - 1 + d.current.startoff
-}
-
-func (d *display) currentUrl() string {
-	return string(d.raw[d.currentRow()])
 }
 
 func (d *display) resetCurrentPos() {
@@ -314,8 +285,7 @@ func (d *display) resetCurrentPos() {
 }
 
 func (d *display) resetRows() {
-	d.raw = make([][]byte, 0)
-	d.rendered = make([][]*cell, 0)
+	d.rows = make([][]*cell, 0)
 }
 
 func (d *display) LoadConfig() error {
@@ -393,7 +363,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 
 		if d.currentSection != ARTICLE_TEXT {
 			var arrow string
-			if i != d.height && i == d.currentRow() {
+			if i != d.height && i == d.currentArrIdx() {
 				// https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
 				arrow = "\u25B6"
 			}
@@ -402,25 +372,29 @@ func (d *display) draw(buf *bytes.Buffer) {
 			runes += 2
 		}
 
-		row := d.rendered[i]
+		row := d.rows[i]
 
-		for _, c := range row {
+		/* 		for _, c := range row {
 			if c.char != NULL {
 				runes++
 			}
-		}
+		} */
 
-		if runes > d.width {
+		/* 		if runes > d.width {
 			log.Default().Printf("current line length %d exceeds screen width: %d\n", runes, d.width)
 			row = row[:len(row)-(runes-d.width+1)]
+		} */
+
+		var chars []rune
+		for _, c := range row {
+			chars = append(chars, c.char)
 		}
 
-		line := stringify(row)
+		line := string(chars)
 		if line == "" {
 			log.Default().Println("found empty row")
 			line = " "
 		}
-
 		log.Default().Printf("writing to buf line #%d: %q\n", i, line)
 
 		fmt.Fprint(buf, ansi.WhiteFG())
@@ -446,7 +420,7 @@ func (d *display) draw(buf *bytes.Buffer) {
 	case d.debugMode:
 		bottomBar.SetText(d.bottomBarMsg, fmt.Sprintf("(y:%v,x:%v) (soff:%v, eoff:%v) (h:%v,w:%v)", d.current.cy, d.current.cx, d.current.startoff, d.current.endoff, d.height, d.width))
 	default:
-		bottomBar.SetText(d.bottomBarMsg, fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rendered)))
+		bottomBar.SetText(d.bottomBarMsg, fmt.Sprintf("%d/%d", d.current.cy+d.current.startoff, len(d.rows)))
 	}
 
 	fmt.Fprint(buf, bottomBar.Build(d.width))

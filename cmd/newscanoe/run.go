@@ -62,7 +62,7 @@ func Run(debugMode bool) {
 					}
 				}
 			default:
-				d.QuitC <- true
+				d.QuitC <- struct{}{}
 			}
 		}
 	}()

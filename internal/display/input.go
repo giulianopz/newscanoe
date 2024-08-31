@@ -137,11 +137,12 @@ func (d *display) whileReading(input byte) {
 	switch input {
 
 	case ctrlPlus('q'), 'q':
-		d.QuitC <- true
+		d.QuitC <- struct{}{}
 
 	case 'r':
 		if d.currentSection == URLS_LIST {
-			parsedFeed, err := d.fetchFeed(string(d.raw[d.currentRow()]))
+			// TODO index internal mem by cursor pos
+			parsedFeed, err := d.fetchFeed("")
 			if err != nil {
 				log.Default().Println(err)
 				d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
@@ -150,13 +151,16 @@ func (d *display) whileReading(input byte) {
 
 			parsedFeed.CountUnread()
 			// TODO rewrite single line with d.writeLineAt
-			d.rendered[d.currentRow()] = fromString(util.RenderFeedRow(parsedFeed.UnreadCount, len(parsedFeed.Items), parsedFeed.Name))
+
+			row := feedRow(parsedFeed.UnreadCount, len(parsedFeed.Items), parsedFeed.Name)
+			d.rows[d.currentArrIdx()] = textcells(row)
 		}
 
 	case 'R':
 		if d.currentSection == URLS_LIST {
 			d.fetchAllFeeds()
-			d.renderFeedList()
+			// TODO
+			//d.renderFeedList()
 		}
 
 	case 'a':
@@ -167,7 +171,8 @@ func (d *display) whileReading(input byte) {
 	case 'o':
 		if d.currentSection == ARTICLES_LIST {
 			if !util.IsHeadless() {
-				if err := util.OpenWithBrowser(string(d.raw[d.currentRow()])); err != nil {
+				//TODO
+				if err := util.OpenWithBrowser(""); err != nil {
 					log.Default().Println("cannot open url with browser", err)
 					d.setTmpBottomMessage(2*time.Second, "cannot open url with browser: check logs")
 				}
@@ -177,7 +182,8 @@ func (d *display) whileReading(input byte) {
 	case 'l':
 		if d.currentSection == ARTICLES_LIST {
 			if util.IsLynxPresent() {
-				if err := util.OpenWithLynx(string(d.raw[d.currentRow()])); err != nil {
+				//TODO
+				if err := util.OpenWithLynx(""); err != nil {
 					log.Default().Println("cannot open url with lynx", err)
 					d.setTmpBottomMessage(2*time.Second, "cannot open url with lynx: check logs")
 				}
@@ -197,7 +203,8 @@ func (d *display) whileReading(input byte) {
 			case URLS_LIST:
 				{
 					d.trackPos()
-					if err := d.loadArticleList(d.currentUrl()); err != nil {
+
+					if err := d.loadArticleList(); err != nil {
 						d.restorePos()
 					} else {
 						d.resetCurrentPos()
@@ -206,7 +213,8 @@ func (d *display) whileReading(input byte) {
 			case ARTICLES_LIST:
 				{
 					d.trackPos()
-					if err := d.loadArticleText(d.currentUrl()); err != nil {
+					// TODO index internal mem by cursor pos
+					if err := d.loadArticleText(""); err != nil {
 						d.restorePos()
 					} else {
 						d.resetCurrentPos()
@@ -228,7 +236,8 @@ func (d *display) whileReading(input byte) {
 				}
 			case ARTICLE_TEXT:
 				{
-					if err := d.loadArticleList(d.currentFeedUrl); err != nil {
+					// TODO restore pos
+					if err := d.loadArticleList(); err != nil {
 						log.Default().Printf("cannot load article of feed with url %q: %v", d.currentFeedUrl, err)
 					}
 					d.currentArticleUrl = ""
@@ -326,7 +335,7 @@ func ctrlPlus(k byte) byte {
 
 func (d *display) moveCursor(direction byte) {
 
-	var lastRow int = len(d.rendered) - 1
+	var lastRow int = len(d.rows) - 1
 
 	switch direction {
 	case ARROW_DOWN:
@@ -341,7 +350,7 @@ func (d *display) moveCursor(direction byte) {
 		}
 
 		if d.current.cy < d.getContentWindowLen() {
-			if d.currentRow()+1 <= lastRow {
+			if d.currentArrIdx()+1 <= lastRow {
 				d.current.cy++
 			}
 		} else if d.current.endoff < lastRow {
@@ -359,7 +368,7 @@ func (d *display) moveCursor(direction byte) {
 		}
 
 		if d.current.cy > 1 {
-			if d.currentRow()-1 <= lastRow {
+			if d.currentArrIdx()-1 <= lastRow {
 				d.current.cy--
 			}
 		} else if d.current.startoff > 0 {
@@ -374,7 +383,7 @@ func (d *display) scroll(dir byte) {
 	case PAGE_DOWN:
 		{
 
-			var lastRow int = len(d.rendered) - 1
+			var lastRow int = len(d.rows) - 1
 			if d.current.endoff == lastRow {
 				return
 			}

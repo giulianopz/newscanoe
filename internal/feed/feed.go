@@ -4,10 +4,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giulianopz/newscanoe/internal/util"
 	"github.com/mmcdole/gofeed"
 	"golang.org/x/exp/slices"
 )
+
+var NoPubDate time.Time = time.Date(1001, 1, 1, 1, 1, 1, 1, time.UTC)
 
 type Feed struct {
 	Name        string
@@ -58,7 +59,7 @@ func (f *Feed) CountUnread() {
 func (f *Feed) GetItemsOrderedByDate() []*Item {
 
 	slices.SortFunc(f.Items, func(a, b *Item) bool {
-		if a.PubDate == util.NoPubDate || b.PubDate == util.NoPubDate {
+		if a.PubDate == NoPubDate || b.PubDate == NoPubDate {
 			return strings.Compare(a.Title, b.Title) <= -1
 		}
 		return a.PubDate.After(b.PubDate)
@@ -84,7 +85,7 @@ func NewItem(title, url string, pubDate time.Time) *Item {
 }
 
 func NewItemFrom(parsedItem *gofeed.Item) *Item {
-	pubDate := util.NoPubDate
+	pubDate := NoPubDate
 	if parsedItem.PublishedParsed != nil {
 		pubDate = *parsedItem.PublishedParsed
 	}

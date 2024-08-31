@@ -1,27 +1,11 @@
 package util
 
 import (
-	"fmt"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"golang.org/x/exp/slices"
 )
-
-func RenderFeedRow(unreadCount, itemsLen int, name string) string {
-	count := fmt.Sprintf("(%d/%d)", unreadCount, itemsLen)
-	return fmt.Sprintf("%-20s %s", count, name)
-}
-
-var NoPubDate time.Time = time.Date(1001, 1, 1, 1, 1, 1, 1, time.UTC)
-
-func RenderArticleRow(pubDate time.Time, title string) string {
-	if pubDate == NoPubDate {
-		return fmt.Sprintf("%-20s %s", "N/A", title)
-	}
-	return fmt.Sprintf("%-20s %s", pubDate.Format("2006-January-02"), title)
-}
 
 func IsLetter(input byte) bool {
 	return (input >= 'A' && input <= 'Z') || (input >= 'a' && input <= 'z')

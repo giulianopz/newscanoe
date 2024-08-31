@@ -22,7 +22,7 @@ func ExtractText(url string) (string, error) {
 	}
 
 	reader, err := readability.New(
-		string(bs), url,
+		string(bs), url, readability.LogLevel(-1),
 	)
 	if err != nil {
 		return "", err
