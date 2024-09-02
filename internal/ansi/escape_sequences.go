@@ -25,6 +25,20 @@ const (
 	RESET_MODE      = csi + "%sl"
 )
 
+// Cst indicates if this rune is the control sequence terminator, i.e. the final byte.
+//
+// It consists of a bit combination from 04/00 to 07/14; it terminates the control
+// sequence and together with the Intermediate Bytes, if present, identifies the control function. Bit
+// combinations 07/00 to 07/14 are available as Final Bytes of control sequences for private (or
+// experimental) use.
+//
+// see: https://www.ecma-international.org/wp-content/uploads/ECMA-48_5th_edition_june_1991.pdf
+func Cst(c rune) bool {
+	return (c >= 0x40 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
+}
+
+var AllAttributesOff = SGR(ALL_ATTRIBUTES_OFF)
+
 func MoveCursor(y, x int) string {
 	return fmt.Sprintf(MOVE_CURSOR_FMT, y, x)
 }

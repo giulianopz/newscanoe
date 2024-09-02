@@ -97,9 +97,8 @@ type display struct {
 	editingMode bool
 	editingBuf  *buffer
 
-	currentSection    int
-	currentFeedUrl    string
-	currentArticleUrl string
+	currentSection int
+	currentFeedUrl string
 }
 
 const (
@@ -116,20 +115,54 @@ type cell struct {
 	sixel byte
 }
 
-func textcell(r rune) *cell {
+func charslen(cells []*cell) int {
+	var k int
+	for i := 0; i < len(cells); i++ {
+		cell := cells[i]
+		if cell.ct == txt {
+
+			c := cells[i].char
+
+			if c == '\x1b' && (i+1) < len(cells)-1 && cells[i+1].char == '[' {
+				for !ansi.Cst(c) {
+
+					if i < len(cells)-1 {
+						i++
+						c = cells[i].char
+					} else {
+						break
+					}
+				}
+			} else {
+				k++
+			}
+		}
+	}
+	return k
+}
+
+func runeToCell(r rune) *cell {
 	return &cell{ct: txt, char: r}
 }
 
-func textcells(s string) []*cell {
+func stringToCells(s string) []*cell {
 	cells := make([]*cell, 0)
 	for _, r := range s {
-		cells = append(cells, textcell(r))
+		cells = append(cells, runeToCell(r))
 	}
 	return cells
 }
 
-func sixelcell(s byte) *cell {
+func sixelToCell(s byte) *cell {
 	return &cell{ct: img, sixel: s}
+}
+
+func cellsToString(cells []*cell) string {
+	var s string
+	for _, c := range cells {
+		s += string(c.char)
+	}
+	return s
 }
 
 type pos struct {
@@ -148,18 +181,33 @@ func (d *display) trackPos() {
 	})
 }
 
-func (d *display) restorePos() {
-	if len(d.previous) != 0 {
-		last := d.previous[len(d.previous)-1]
-		d.current.cy, d.current.cx = last.cy, last.cx
-		d.current.startoff, d.current.endoff = last.startoff, last.endoff
+func (d *display) peekPrevPos(back int) *pos {
 
-		d.previous[len(d.previous)-1] = nil
-		d.previous = d.previous[:len(d.previous)-1]
-	} else {
+	if len(d.previous) == 0 {
+		return &pos{
+			cx:       1,
+			cy:       1,
+			startoff: 0,
+			endoff:   0,
+		}
+	}
+	return d.previous[len(d.previous)-1-back]
+}
+
+func (d *display) restorePos() {
+
+	if len(d.previous) == 0 {
 		d.current.cy, d.current.cx = 1, 1
 		d.current.startoff, d.current.endoff = 0, 0
+		return
 	}
+
+	last := d.previous[len(d.previous)-1]
+	d.current.cy, d.current.cx = last.cy, last.cx
+	d.current.startoff, d.current.endoff = last.startoff, last.endoff
+
+	d.previous[len(d.previous)-1] = nil
+	d.previous = d.previous[:len(d.previous)-1]
 }
 
 func New(debugMode bool) *display {
@@ -252,10 +300,14 @@ func (d *display) Clear() {
 	fmt.Fprintf(os.Stdout, xterm.DISABLE_BRACKETED_PASTE)
 }
 
+func (d *display) appendCells(cells []*cell) {
+	d.rows = append(d.rows, cells)
+}
+
 func (d *display) appendRow(s string) {
 	row := make([]*cell, 0)
 	for _, r := range s {
-		row = append(row, textcell(r))
+		row = append(row, runeToCell(r))
 	}
 	d.rows = append(d.rows, row)
 }

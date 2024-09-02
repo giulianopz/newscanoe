@@ -1,7 +1,6 @@
 package display
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"log/slog"
@@ -144,12 +143,10 @@ func clean(s string) string {
 	return string(bs[:n])
 }
 
-func (d *display) loadArticleList() error {
+func (d *display) loadArticleList(i int) error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
-
-	i := d.currentArrIdx()
 
 	f := d.config.Feeds[i]
 
@@ -201,7 +198,7 @@ func (d *display) loadArticleList() error {
 	return nil
 }
 
-func (d *display) loadArticleText(url string) error {
+func (d *display) loadArticleText() error {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -216,7 +213,7 @@ func (d *display) loadArticleText(url string) error {
 			text, err := html.ExtractText(i.Url)
 			if err != nil {
 				log.Default().Println(err)
-				d.setTmpBottomMessage(2*time.Second, fmt.Sprintf("cannot load article from url: %s", url))
+				d.setTmpBottomMessage(2*time.Second, "cannot load article")
 				return fmt.Errorf("cannot load aricle")
 			}
 
@@ -224,18 +221,8 @@ func (d *display) loadArticleText(url string) error {
 
 			d.resetRows()
 
-			var raw [][]byte
-			scanner := bufio.NewScanner(strings.NewReader(text))
-			for scanner.Scan() {
-				line := strings.TrimSpace(scanner.Text())
-				if line != "" {
-					raw = append(raw, []byte(line+"\n"))
-				}
-			}
+			d.reflow(text)
 
-			d.renderArticleText(raw)
-
-			d.currentArticleUrl = url
 			d.currentSection = ARTICLE_TEXT
 
 			d.setTopMessage(fmt.Sprintf("> %s > %s", cachedFeed.Name, i.Title))

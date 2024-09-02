@@ -142,7 +142,12 @@ func (d *display) whileReading(input byte) {
 	case 'r':
 		if d.currentSection == URLS_LIST {
 			// TODO index internal mem by cursor pos
-			parsedFeed, err := d.fetchFeed("")
+
+			i := d.currentArrIdx()
+
+			url := d.config.Feeds[i].Url
+
+			parsedFeed, err := d.fetchFeed(url)
 			if err != nil {
 				log.Default().Println(err)
 				d.setTmpBottomMessage(2*time.Second, "cannot parse feed!")
@@ -153,7 +158,7 @@ func (d *display) whileReading(input byte) {
 			// TODO rewrite single line with d.writeLineAt
 
 			row := feedRow(parsedFeed.UnreadCount, len(parsedFeed.Items), parsedFeed.Name)
-			d.rows[d.currentArrIdx()] = textcells(row)
+			d.rows[d.currentArrIdx()] = stringToCells(row)
 		}
 
 	case 'R':
@@ -204,7 +209,8 @@ func (d *display) whileReading(input byte) {
 				{
 					d.trackPos()
 
-					if err := d.loadArticleList(); err != nil {
+					i := d.currentArrIdx()
+					if err := d.loadArticleList(i); err != nil {
 						d.restorePos()
 					} else {
 						d.resetCurrentPos()
@@ -213,8 +219,7 @@ func (d *display) whileReading(input byte) {
 			case ARTICLES_LIST:
 				{
 					d.trackPos()
-					// TODO index internal mem by cursor pos
-					if err := d.loadArticleText(""); err != nil {
+					if err := d.loadArticleText(); err != nil {
 						d.restorePos()
 					} else {
 						d.resetCurrentPos()
@@ -236,11 +241,11 @@ func (d *display) whileReading(input byte) {
 				}
 			case ARTICLE_TEXT:
 				{
-					// TODO restore pos
-					if err := d.loadArticleList(); err != nil {
+					feedIdx := d.peekPrevPos(1).cy - 1
+
+					if err := d.loadArticleList(feedIdx); err != nil {
 						log.Default().Printf("cannot load article of feed with url %q: %v", d.currentFeedUrl, err)
 					}
-					d.currentArticleUrl = ""
 					d.restorePos()
 				}
 			}
