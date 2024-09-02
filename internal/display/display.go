@@ -330,6 +330,10 @@ func (d *display) currentArrIdx() int {
 	return d.current.cy - 1 + d.current.startoff
 }
 
+func (d *display) prevArrIdx(p *pos) int {
+	return p.cy - 1 + p.startoff
+}
+
 func (d *display) resetCurrentPos() {
 	d.current.cy = 1
 	d.current.cx = 1

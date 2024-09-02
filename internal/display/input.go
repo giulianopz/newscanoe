@@ -241,7 +241,7 @@ func (d *display) whileReading(input byte) {
 				}
 			case ARTICLE_TEXT:
 				{
-					feedIdx := d.peekPrevPos(1).cy - 1
+					feedIdx := d.prevArrIdx(d.peekPrevPos(1))
 
 					if err := d.loadArticleList(feedIdx); err != nil {
 						log.Default().Printf("cannot load article of feed with url %q: %v", d.currentFeedUrl, err)
