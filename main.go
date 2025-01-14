@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/giulianopz/newscanoe/cmd/newscanoe"
@@ -38,6 +39,7 @@ func main() {
 
 	if !debugFlag {
 		log.SetOutput(io.Discard)
+		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	}
 
 	var err error

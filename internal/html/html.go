@@ -23,7 +23,7 @@ func ExtractText(url string) ([][]byte, error) {
 
 	// TODO pass htm2ansi as a serializer
 	reader, err := readability.New(
-		string(bs), url, readability.LogLevel(-1),
+		string(bs), url,
 	)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func ExtractText(url string) ([][]byte, error) {
 		return nil, err
 	}
 
-	res := html2ansi.Convert(article.Content)
+	res := html2ansi.Convert(article.HTMLContent)
 
 	/* 	unescapedText := html.UnescapeString(article.TextContent)
 	   	log.Default().Printf("unescaped article text: %s", unescapedText) */
